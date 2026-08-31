@@ -1,0 +1,1 @@
+300 samples at 100 Hz, seq 7, stream s1, device abcd1234, sha256 8bc088c762375ca8be523bc6d19ec67b5d4b90fffcec66e468681991aeef7bd6. Regenerate with FIELDLAB_FIXTURE_DIR=analysis/fixtures swift test --filter StreamChunkTests

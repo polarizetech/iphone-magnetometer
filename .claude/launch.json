@@ -1,0 +1,8 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    { "name": "fieldlab-recorder", "runtimeExecutable": "python3", "runtimeArgs": ["serve.py"],
+      "port": 8212, "autoPort": true },
+    { "name": "monorepo-gateway", "url": "http://127.0.0.1:8180" }
+  ]
+}

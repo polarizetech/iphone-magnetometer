@@ -1,0 +1,5 @@
+{
+  "_why": "A device integration that RECEIVES over the tailnet. tools/ is off the URL surface by default and that is a privacy property; this file is the deliberate opt-in, and it exists because the iPhone posts chunks to this server over the tailnet. Without it the phone's uploads fail silently.",
+  "aliases": ["biomimetic-radar", "unexplained-local-line", "round-the-world-elf"],
+  "_aliases_why": "Historical names. The iOS app ships with /biomimetic-radar as its default endpoint and phones already in the field hold that URL; the other two are folders this code has lived in during 2026-08-24's restructure. Removing an alias strands a device."
+}
