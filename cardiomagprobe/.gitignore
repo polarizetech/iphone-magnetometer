@@ -1,0 +1,7 @@
+.build/
+DerivedData/
+*.xcuserstate
+xcuserdata/
+analysis/__pycache__/
+analysis/.pytest_cache/
+

@@ -1,4 +1,12 @@
-# CLAUDE.md — `fieldlab-recorder`
+# CLAUDE.md — `iphone-magnetometer`
+
+**Renamed from `fieldlab-recorder` on 2026-09-15** (repo, monorepo submodule path, and gateway
+folder). The repo is about one question — *can a stock iPhone do this?* — so it is named for the
+device, leaving room for other recorders built on the same concept. **The app is still FieldLab**
+and the iOS bundle id `com.biomimeticradar.app` is unchanged: iOS keys the app's container to it,
+and the phone holds unsent chunks there. Every old URL still resolves through `tailscale.json`
+aliases (`/fieldlab-recorder`, `/biomimetic-radar` — the phone's default upload endpoint).
+
 
 **The phone as a magnetometer.** The iOS recorder, the chunk wire format, the always-on stream
 store, and the web dashboard over it. Wiring a consumer in → the API list at the top of
@@ -7,11 +15,11 @@ store, and the web dashboard over it. Wiring a consumer in → the API list at t
 Run: `python3 serve.py 8212`.
 Tests: `FIELDLAB_STREAMS=$(mktemp -d) python3 dev_check.py` (**94/94** standalone).
 
-## ⚠ THIS IS ITS OWN REPO (`polarizetech/fieldlab-recorder`, extracted 2026-08-31)
+## ⚠ THIS IS ITS OWN REPO (`polarizetech/iphone-magnetometer`, extracted 2026-08-31)
 
-It rides in the `audio-projects` monorepo as a **submodule at `tools/fieldlab-recorder`**, the same
+It rides in the `audio-projects` monorepo as a **submodule at `tools/iphone-magnetometer`**, the same
 arrangement `universal-wave-translation-layer` and `research` have. A fresh monorepo clone needs
-`git clone --recurse-submodules`, or `git submodule update --init tools/fieldlab-recorder`; the
+`git clone --recurse-submodules`, or `git submodule update --init tools/iphone-magnetometer`; the
 monorepo stores a 40-character pointer, and changing this tool is a commit **here** plus a pointer
 commit **there**.
 
@@ -28,6 +36,26 @@ passed over — `dev_check.py` prints four `SKIP` lines standalone and they name
 
 `serve.py` finds its consumer's analysis directory by `$FIELDLAB_ANALYSIS` → a monorepo search →
 `./analysis`, so it has never had a hardcoded consumer path and does not gain one now.
+
+## `cardiomagprobe/` — the second iPhone app (folded in 2026-09-15)
+
+A separate SwiftUI app (**CardioMag Probe**) asking the cardiac question directly: a
+heartbeat-correlated magnetometer component at chest distances, with **camera-fingertip PPG timing**
+(`CameraPPGRecorder.swift`), manual beat marks, or imported beat times as the trigger. It came from
+`projects/iphone-meg-2.0` with its analysis (`cardiomag_analysis.py`, synthetic validation, the
+prior/injection ladders, site survey, body signals, hard-iron calibration) and docs
+(`PROTOCOL.md`, `SCHEMA.md`, `ARTIFACT_CHECKLIST.md`).
+
+**Source only; no build output and no history** — the origin had committed ~9,830 Xcode build
+files, and carrying its history would have put them in this repo forever. **Its five
+monorepo-dependent scripts are an open tie**: they import `session`/`census` from
+`falsify/round-the-world-elf/analysis` and `injrec` from `tools/injection-recovery`, and raise with
+an explanation when run outside the monorepo. They resolve when those modules move here. Its
+`test_analysis.py` (3 tests) needs only numpy/pandas/scipy/matplotlib and passes standalone.
+
+**Note the PPG trigger** against `research/.../mechanisms/ecg-gated-magnetometry.md`: PPG timing
+is adequate as an HRV covariate and was rejected as a *gate*, because pulse-arrival jitter
+oscillates with respiration (20 ms retains 0.001 of a 30 Hz component).
 
 ## Findings do not live here — `research_path.py`
 
