@@ -87,13 +87,18 @@ for col in ("monotonic_s", "mx_uT", "my_uT", "mz_uT", "magnitude_uT", "wall_cloc
 
 import ast as _ast
 _ALLOWED = {"__future__", "csv", "json", "dataclasses", "datetime", "pathlib", "numpy", "bands"}
+# census's line arithmetic moved to uwtl on 2026-09-15. uwtl is its own repo and a normal pinned
+# dependency, not the monorepo, so census may import it -- and nothing else from outside.
+_ALLOWED_BY_FILE = {"census.py": _ALLOWED | {"uwtl"}}
 for _name in ("session.py", "census.py"):
     _tree = _ast.parse((HERE / _name).read_text())
     _mods = {(n.module or "").split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom)}
     _mods |= {a.name.split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.Import) for a in n.names}
     _rel = [n for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom) and n.level]
-    check(f"{_name} imports only stdlib, numpy and this repo's bands", _mods <= _ALLOWED and not _rel,
-          str(sorted(_mods - _ALLOWED)) + (" + relative imports" if _rel else ""))
+    _ok_mods = _ALLOWED_BY_FILE.get(_name, _ALLOWED)
+    check(f"{_name} imports only stdlib, numpy, this repo's bands" + (" and uwtl" if "uwtl" in _ok_mods else ""),
+          _mods <= _ok_mods and not _rel,
+          str(sorted(_mods - _ok_mods)) + (" + relative imports" if _rel else ""))
 # The app was cut back to a pure recorder on 2026-08-23: there is no on-phone export screen any
 # more, so there is no second CSV encoder to keep in step. The spool IS the export.
 check("the app has no export screen (the spool is the export)",
@@ -439,11 +444,13 @@ try:
     # the stream loader and the census, run on the scratch store the simulated phone just filled
     try:
         import numpy  # noqa: F401
+        import uwtl.spectral  # noqa: F401
         _have_np = True
-    except ModuleNotFoundError:
+    except ModuleNotFoundError as _e:
         _have_np = False
+        _missing = _e.name
     if not _have_np:
-        print("  SKIP  session/census on the scratch store — numpy is not installed for this interpreter")
+        print(f"  SKIP  session/census on the scratch store — {_missing} is not installed for this interpreter")
     else:
         import session as _sess
         import census as _cen
@@ -457,6 +464,16 @@ try:
         _share = sum(c.fraction for c in _c.components)
         check("census partitions the stream's AC variance (shares sum to 1)", abs(_share - 1.0) < 1e-6, f"{_share:.6f}")
         check("census reads THIS repo's band registry, not a copy", _cen.band_registry is _bands)
+        # bands.py stays stdlib-only (serve.py imports it without numpy or uwtl), so its alias and
+        # fold arithmetic is a MIRROR of uwtl.adequacy's, held equal here rather than trusted.
+        import uwtl.adequacy as _adq
+        _mism = [(b.id, r, tg) for b in _bands.BANDS for r in (25.0, 50.0, 64.0, 100.0, 101.42)
+                 for tg in (0.0, 8.3)
+                 if (lambda v, f: (v.kind, v.apparent_centre_hz, v.hz_from_target, v.note)
+                     != (f.kind, f.apparent_centre_hz, f.hz_from_target, f.note))(
+                     _bands.visibility(b, r, tg), _adq.fold(b.low_hz, b.high_hz, r, tg))]
+        check("bands.visibility equals uwtl.adequacy.fold for every band, rate and target", not _mism,
+              str(_mism[:3]))
 
     venv = HERE / "analysis/.venv/bin/python"
     if venv.exists() and (HERE / "analysis/run.py").exists():

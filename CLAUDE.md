@@ -47,7 +47,11 @@ same reason those do: **the thing that writes a format and the thing that reads 
 and three separate folders were already reaching across the monorepo for them.
 
 - **They import only the standard library, numpy and this repo's `bands`**, asserted by AST in
-  `dev_check.py`, so the repo still imports nothing from the monorepo.
+  `dev_check.py`, so the repo still imports nothing from the monorepo. **One exception since
+  2026-09-15: `census` imports `uwtl.spectral`**, where its line arithmetic now lives. uwtl is its own
+  repo and a pinned dependency (>= 0.2.1), not the monorepo. `bands.py` stays stdlib-only because
+  `serve.py` loads it without numpy; its alias arithmetic mirrors `uwtl.adequacy.fold`, and the gate
+  asserts they agree.
 - **The wire-format parity check stopped being skippable.** It used to depend on a consumer being on
   the path; it now reads this repo's own `session.py`, so it runs standalone too.
 - `dev_check.py` also loads the simulated phone's scratch store with `session.load_stream` and runs a
@@ -70,7 +74,8 @@ prior/injection ladders, site survey, body signals, hard-iron calibration) and d
 
 **Source only; no build output and no history** — the origin had committed ~9,830 Xcode build
 files, and carrying its history would have put them in this repo forever. **`calibrate`,
-`bodysignals` and `site_survey` run standalone** since `session` and `census` moved in (below).
+`bodysignals` and `site_survey` run standalone** since `session` and `census` moved in (below),
+given `uwtl` >= 0.2.1 installed.
 **`ladder2`, `prior_ladder` and `injection_sweep` are the one remaining tie**: they plant synthetic
 cardiac sources with `injrec` from the monorepo's `tools/injection-recovery`, and raise with that
 reason when run outside it. **`synthetic_validation.py` was removed 2026-09-15**: it swept its own
