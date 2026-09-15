@@ -16,11 +16,11 @@ no per-project copy of the data and there must not be — one device, one record
 ## 0. Start it (once, shared by everything)
 
 ```bash
-python3 tools/fieldlab-recorder/serve.py 8212
+python3 tools/iphone-magnetometer/serve.py 8212
 ```
 
 You usually do not run this by hand — `tools/tailscale/gateway.py` starts it on demand. On the
-tailnet it is `https://colin.tailc463ae.ts.net/fieldlab-recorder/`.
+tailnet it is `https://colin.tailc463ae.ts.net/iphone-magnetometer/`.
 
 **Only one process may own the store.** That is why this is a tool and not a copy in each project:
 the phone deletes its own copy of a chunk the moment this server acknowledges it, so a second
@@ -53,14 +53,14 @@ timestamps.
 ## 2. A web page
 
 ```html
-<script src="https://colin.tailc463ae.ts.net/fieldlab-recorder/fieldlab-client.js"></script>
+<script src="https://colin.tailc463ae.ts.net/iphone-magnetometer/fieldlab-client.js"></script>
 ```
 
 Served from the tool so every consumer shares one copy and they cannot drift. **Reads are
 CORS-open**, so a project on its own port can fetch across; writes are not (see §6).
 
 ```js
-const fl = new FieldLab({ base: 'https://colin.tailc463ae.ts.net/fieldlab-recorder' });
+const fl = new FieldLab({ base: 'https://colin.tailc463ae.ts.net/iphone-magnetometer' });
 
 const devices = await fl.devices();
 const dev = devices[0].device;
@@ -84,7 +84,7 @@ a naive request for a day is 8.7 million rows.
 ## 3. Python
 
 ```python
-import sys; sys.path.insert(0, "…/tools/fieldlab-recorder")
+import sys; sys.path.insert(0, "…/tools/iphone-magnetometer")
 import store
 
 for dev in store.devices():
@@ -124,7 +124,7 @@ at `/watch` without knowing anything about it.
 ```
 falsify/your-entry/
   analysis/            ← FIELDLAB_ANALYSIS points here (or it is found by default)
-  watch/index.html     ← served at /fieldlab-recorder/watch/
+  watch/index.html     ← served at /iphone-magnetometer/watch/
   watch/your.css .js
 ```
 

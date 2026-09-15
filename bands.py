@@ -39,12 +39,13 @@ def _find_swift() -> Path:
     # resolving the moment the two are checked out separately. The origin keeps a re-export shim.
     if (here.parent / rel).is_file():
         return here.parent / rel
-    # The Swift moved to tools/fieldlab-recorder on 2026-08-24 when the device integration was
+    # The Swift moved to tools/fieldlab-recorder (now tools/iphone-magnetometer) on 2026-08-24 when the device integration was
     # split out. Look there first — it is the owner now — before falling back to a search.
     for root in here.parents:
-        direct = root / "tools" / "fieldlab-recorder" / rel
-        if direct.is_file():
-            return direct
+        for name in ("iphone-magnetometer", "fieldlab-recorder"):   # renamed 2026-09-15
+            direct = root / "tools" / name / rel
+            if direct.is_file():
+                return direct
     tried = []
     for root in here.parents:
         if not (root / "falsify").is_dir() and root.name != "falsify":

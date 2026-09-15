@@ -1,7 +1,7 @@
 /* fieldlab-client.js — the phone's magnetometer, in any page in this monorepo.
  *
- *   <script src="https://colin.tailc463ae.ts.net/fieldlab-recorder/fieldlab-client.js"></script>
- *   const fl = new FieldLab();                 // same origin, or {base: 'https://…/fieldlab-recorder'}
+ *   <script src="https://colin.tailc463ae.ts.net/iphone-magnetometer/fieldlab-client.js"></script>
+ *   const fl = new FieldLab();                 // same origin, or {base: 'https://…/iphone-magnetometer'}
  *   const devs = await fl.devices();
  *   fl.onChunk(() => redraw());                // fires when the phone lands a new chunk
  *   const w = await fl.latest(devs[0].device, 300);   // the newest window that HOLDS data
