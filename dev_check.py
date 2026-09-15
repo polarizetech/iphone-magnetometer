@@ -123,7 +123,7 @@ check("launch.json has the monorepo-gateway entry", "monorepo-gateway" in names)
 check("streams/ is gitignored", "streams/" in (HERE / ".gitignore").read_text())
 check("no folder here is named recordings/ (the gateway would refuse to serve the project)", not (HERE / "recordings").exists())
 # THE MONOREPO IS OPTIONAL, and its absence is announced rather than passed over. This repo is
-# standalone (`polarizetech/fieldlab-recorder`) and rides in the audio-projects monorepo as a
+# standalone (`polarizetech/iphone-magnetometer`) and rides in the audio-projects monorepo as a
 # submodule under `tools/`; the serving layer only exists in the latter. A silent skip here would
 # read as "the gateway checks passed".
 gw = MONOREPO / "tools/tailscale/gateway.py"

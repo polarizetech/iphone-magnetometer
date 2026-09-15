@@ -3,7 +3,7 @@
 FieldLab is a native SwiftUI research app for testing how far coherent processing can recover a deliberately coded magnetic signal below the instantaneous noise of an iPhone magnetometer.
 
 **Standalone repo.** It also rides in the `audio-projects` monorepo as a submodule at
-`tools/fieldlab-recorder`. It imports nothing from that monorepo; everything monorepo-side is
+`tools/iphone-magnetometer`. It imports nothing from that monorepo; everything monorepo-side is
 optional and announces itself when absent (`python3 dev_check.py` prints its skips). Findings are
 written to the `research` corpus, not to this repo — see `research_path.py`.
 
