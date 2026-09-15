@@ -211,8 +211,11 @@ private struct StreamBody: View {
                     Text("60 s").tag(60.0)
                     Text("5 min · economy").tag(300.0)
                 }
+                // 64 Hz exists for the alias test only: 101.4 Hz and 50 Hz may be an exact 2:1 pair,
+                // which lands an alias of k*rate +/- f on the same frequency at both. 64 is not a
+                // whole-number ratio of 101.4, so a genuine alias moves. Mains folds to 4 Hz here.
                 Picker("Sample rate", selection: $stream.settings.sampleRateHz) {
-                    Text("50 Hz").tag(50.0); Text("100 Hz").tag(100.0)
+                    Text("50 Hz").tag(50.0); Text("64 Hz · alias test").tag(64.0); Text("100 Hz").tag(100.0)
                 }
                 Toggle("Attitude (gyro — the power cost)", isOn: $stream.settings.attitude)
                 Toggle("Record GPS in samples", isOn: $stream.settings.includeLocation)

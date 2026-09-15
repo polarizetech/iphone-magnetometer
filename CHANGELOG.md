@@ -6,8 +6,9 @@ The 2026-08-23 entry below says decimating the record settles the alias question
 Once sampled, an alias is the folded tone, so nothing done to one recording can tell it from a real
 line; the test passed both. It now reports inconclusive and the question is a manual test in
 `falsify/unexplained-local-line` (record at 100 Hz, then 50 Hz). The app's two rates are exactly
-2:1 if the 50 Hz path decimates, which cannot move an alias of `k·rate ± f` either; a non-integer
-rate option (e.g. 64 Hz) would settle it and is not offered.
+2:1 if the 50 Hz path decimates, which cannot move an alias of `k·rate ± f` either. **A 64 Hz option
+("64 Hz · alias test") was added to the Sample rate picker the same day** for exactly this; device
+build succeeds, never yet run on a phone, and its delivered rate is unmeasured.
 
 ## 2026-08-23 (evening) — automatic verification, morphology, and the signal register
 
