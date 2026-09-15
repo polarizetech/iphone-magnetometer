@@ -40,17 +40,17 @@ def _repo_root() -> Path:
     for c in here.parents:
         if (c / "tools").is_dir() and (c / "falsify").is_dir():
             return c
-    raise RuntimeError("monorepo root not found. This script reads the recorder's stream store and the fieldlab analysis package (session, census), which still live in the audio-projects monorepo; run it from a checkout where this repo is tools/iphone-magnetometer.")
+    raise RuntimeError("monorepo root not found. This script plants synthetic cardiac sources with injrec (tools/injection-recovery), which lives in the audio-projects monorepo; run it from a checkout where this repo is tools/iphone-magnetometer. session and census are in this repo.")
 
 
 ROOT = _repo_root()
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store.py, bands.py
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store, bands, session, census
 sys.path.insert(0, str(ROOT / "tools" / "injection-recovery"))
-sys.path.insert(0, str(ROOT / "falsify" / "round-the-world-elf" / "analysis"))
 
 import store                                            # noqa: E402
 from injrec.inject import cardiac_source                # noqa: E402
-from fieldlab import census, session as sm              # noqa: E402
+import census                                   # noqa: E402
+import session as sm                            # noqa: E402
 
 #: The measured magnetocardiogram anchor: ~50 pT at 5 cm (research/, coupling_budget.py).
 MCG_5CM_NT = 0.050

@@ -40,19 +40,11 @@ import numpy as np
 from scipy import signal as sg
 
 
-def _root() -> Path:
-    for c in Path(__file__).resolve().parents:
-        if (c / "tools").is_dir() and (c / "falsify").is_dir():
-            return c
-    raise RuntimeError("monorepo root not found. This script reads the recorder's stream store and the fieldlab analysis package (session, census), which still live in the audio-projects monorepo; run it from a checkout where this repo is tools/iphone-magnetometer.")
-
-
-ROOT = _root()
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store.py, bands.py
-sys.path.insert(0, str(ROOT / "falsify" / "round-the-world-elf" / "analysis"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store, bands, session, census
 
 import store                                    # noqa: E402
-from fieldlab import census, session as sm      # noqa: E402
+import census                                   # noqa: E402
+import session as sm                            # noqa: E402
 
 CARDIAC_BAND = (0.8, 2.0)          # 48-120 bpm
 TREMOR_BAND = (8.0, 12.0)          # beta-adrenergic physiological tremor

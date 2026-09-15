@@ -35,17 +35,16 @@ def _repo_root() -> Path:
     for c in Path(__file__).resolve().parents:
         if (c / "tools").is_dir() and (c / "falsify").is_dir():
             return c
-    raise RuntimeError("monorepo root not found. This script reads the recorder's stream store and the fieldlab analysis package (session, census), which still live in the audio-projects monorepo; run it from a checkout where this repo is tools/iphone-magnetometer.")
+    raise RuntimeError("monorepo root not found. This script plants synthetic cardiac sources with injrec (tools/injection-recovery), which lives in the audio-projects monorepo; run it from a checkout where this repo is tools/iphone-magnetometer. session and census are in this repo.")
 
 
 ROOT = _repo_root()
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store.py, bands.py
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store, bands, session, census
 sys.path.insert(0, str(ROOT / "tools" / "injection-recovery"))
-sys.path.insert(0, str(ROOT / "falsify" / "round-the-world-elf" / "analysis"))
 
 import store                                        # noqa: E402
 from injrec.inject import cardiac_source            # noqa: E402
-from fieldlab import session as sm                  # noqa: E402
+import session as sm                            # noqa: E402
 
 #: Roth (2024): 10-100 pT peak at ~3 cm above the chest. A range, reported as one.
 MCG_NT_AT_3CM = (0.010, 0.100)

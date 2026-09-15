@@ -37,6 +37,28 @@ passed over — `dev_check.py` prints four `SKIP` lines standalone and they name
 `serve.py` finds its consumer's analysis directory by `$FIELDLAB_ANALYSIS` → a monorepo search →
 `./analysis`, so it has never had a hardcoded consumer path and does not gain one now.
 
+## `session.py` and `census.py` — the reader moved in (2026-09-15)
+
+The record loader (`session`: an export directory or a window of the stream store → one `Session`,
+with the measured rate and clock jitter) and the variance partition (`census`: every unit of AC
+variance attributed to a named band, an anonymous `U-nn` line, or left unattributed) moved here from
+`falsify/round-the-world-elf/analysis/fieldlab/`. They sit beside `bands.py` and `store.py` for the
+same reason those do: **the thing that writes a format and the thing that reads it belong together**,
+and three separate folders were already reaching across the monorepo for them.
+
+- **They import only the standard library, numpy and this repo's `bands`**, asserted by AST in
+  `dev_check.py`, so the repo still imports nothing from the monorepo.
+- **The wire-format parity check stopped being skippable.** It used to depend on a consumer being on
+  the path; it now reads this repo's own `session.py`, so it runs standalone too.
+- `dev_check.py` also loads the simulated phone's scratch store with `session.load_stream` and runs a
+  `census` over it (shares sum to 1, and `census.band_registry is bands`). It skips loudly without
+  numpy.
+- **The monorepo keeps one-line redirects, not copies.** Each replaces itself in `sys.modules` with
+  this module, so `from fieldlab import census` in either falsify entry returns this exact object —
+  a test that patches it patches the real thing, and there is only ever one `Band` class.
+  `falsify/round-the-world-elf/analysis/fieldlab/_instrument.py` holds the finder and refuses loudly
+  if some other module named `session` or `census` got onto `sys.path` first.
+
 ## `cardiomagprobe/` — the second iPhone app (folded in 2026-09-15)
 
 A separate SwiftUI app (**CardioMag Probe**) asking the cardiac question directly: a
@@ -47,11 +69,11 @@ prior/injection ladders, site survey, body signals, hard-iron calibration) and d
 (`PROTOCOL.md`, `SCHEMA.md`, `ARTIFACT_CHECKLIST.md`).
 
 **Source only; no build output and no history** — the origin had committed ~9,830 Xcode build
-files, and carrying its history would have put them in this repo forever. **Its five
-monorepo-dependent scripts are an open tie**: they import `session`/`census` from
-`falsify/round-the-world-elf/analysis` and `injrec` from `tools/injection-recovery`, and raise with
-an explanation when run outside the monorepo. They resolve when those modules move here. Its
-`test_analysis.py` (3 tests) needs only numpy/pandas/scipy/matplotlib and passes standalone.
+files, and carrying its history would have put them in this repo forever. **`calibrate`,
+`bodysignals` and `site_survey` run standalone** since `session` and `census` moved in (below).
+**`ladder2` and `prior_ladder` are the one remaining tie**: they plant synthetic cardiac sources with
+`injrec` from the monorepo's `tools/injection-recovery`, and raise with that reason when run
+outside it. `test_analysis.py` (3 tests) passes standalone.
 
 **Note the PPG trigger** against `research/.../mechanisms/ecg-gated-magnetometry.md`: PPG timing
 is adequate as an HRV covariate and was rejected as a *gate*, because pulse-arrival jitter

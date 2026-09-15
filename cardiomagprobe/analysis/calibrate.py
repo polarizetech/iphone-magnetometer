@@ -35,19 +35,10 @@ from pathlib import Path
 import numpy as np
 
 
-def _root() -> Path:
-    for c in Path(__file__).resolve().parents:
-        if (c / "tools").is_dir() and (c / "falsify").is_dir():
-            return c
-    raise RuntimeError("monorepo root not found. This script reads the recorder's stream store and the fieldlab analysis package (session, census), which still live in the audio-projects monorepo; run it from a checkout where this repo is tools/iphone-magnetometer.")
-
-
-ROOT = _root()
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store.py, bands.py
-sys.path.insert(0, str(ROOT / "falsify" / "round-the-world-elf" / "analysis"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store, bands, session, census
 
 import store                                    # noqa: E402
-from fieldlab import session as sm              # noqa: E402
+import session as sm                            # noqa: E402
 
 #: Below this mean per-component attitude spread the system is too ill-conditioned to solve.
 #: A phone that never turns cannot tell a device-fixed offset from the Earth.

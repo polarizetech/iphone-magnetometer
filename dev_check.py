@@ -77,23 +77,23 @@ import serve  # noqa: E402
 check("parity: StreamChunk.swift csvHeader == serve.py CSV_HEADER", swift_header == serve.CSV_HEADER, str(swift_header)[:60])
 # `session.py` stayed with the sibling entry when the phone half split out on 2026-08-24;
 # this package reaches it through an extended __path__. Follow the module rather than the path.
-# THE CONSUMER IS OPTIONAL TOO. `session.py` belongs to the reading side, not the recording side —
-# it stayed with the falsify entries when the phone half split out on 2026-08-24, and this repo is
-# standalone. When a consumer IS on the path (serve.py puts it there), its column parity against
-# the wire format is worth asserting, because that seam is where a format change silently breaks a
-# reader. When it is not, say so: this check is the only thing standing between the two halves.
+# THE READER LIVES HERE NOW (2026-09-15). `session.py` and `census.py` moved in from
+# falsify/round-the-world-elf; the monorepo keeps redirects. So the wire-format parity check no longer
+# depends on a consumer being on the path — it reads this repo's own reader, and cannot be skipped.
 sys.path.insert(0, str(HERE / "analysis"))
-try:
-    from fieldlab import session as _session_mod      # noqa: E402
-except ModuleNotFoundError:
-    _session_mod = None
-if _session_mod is None:
-    print("  SKIP  wire-format parity against a consumer's session.py — no consumer on the path. "
-          "In the monorepo this is falsify/unexplained-local-line/analysis.")
-else:
-    session_py = Path(_session_mod.__file__).read_text()
-    for col in ("monotonic_s", "mx_uT", "my_uT", "mz_uT", "magnitude_uT", "wall_clock"):
-        check(f"parity: analysis/session.py reads column {col}", f'"{col}"' in session_py)
+session_py = (HERE / "session.py").read_text()
+for col in ("monotonic_s", "mx_uT", "my_uT", "mz_uT", "magnitude_uT", "wall_clock"):
+    check(f"parity: session.py reads column {col}", f'"{col}"' in session_py)
+
+import ast as _ast
+_ALLOWED = {"__future__", "csv", "json", "dataclasses", "datetime", "pathlib", "numpy", "bands"}
+for _name in ("session.py", "census.py"):
+    _tree = _ast.parse((HERE / _name).read_text())
+    _mods = {(n.module or "").split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom)}
+    _mods |= {a.name.split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.Import) for a in n.names}
+    _rel = [n for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom) and n.level]
+    check(f"{_name} imports only stdlib, numpy and this repo's bands", _mods <= _ALLOWED and not _rel,
+          str(sorted(_mods - _ALLOWED)) + (" + relative imports" if _rel else ""))
 # The app was cut back to a pure recorder on 2026-08-23: there is no on-phone export screen any
 # more, so there is no second CSV encoder to keep in step. The spool IS the export.
 check("the app has no export screen (the spool is the export)",
@@ -436,16 +436,30 @@ try:
     check("a failure never puts a python traceback in the response body",
           "Traceback" not in str(watch_res.get("reason", "")))
 
-    # analysis venv, when present: the stream loader reads the scratch store
+    # the stream loader and the census, run on the scratch store the simulated phone just filled
+    try:
+        import numpy  # noqa: F401
+        _have_np = True
+    except ModuleNotFoundError:
+        _have_np = False
+    if not _have_np:
+        print("  SKIP  session/census on the scratch store — numpy is not installed for this interpreter")
+    else:
+        import session as _sess
+        import census as _cen
+        import bands as _bands
+        _x = _sess.load_stream(f"{tmp}/sim00001")
+        _j = _x.jitter_report()
+        check("session.load_stream reads the store (11000 samples, 100 Hz, 1 dropped gap, 11 chunks)",
+              [_x.n, round(_x.rate_hz, 2), _j["dropped_gaps"], _x.metadata["chunks"]] == [11000, 100.0, 1, 11],
+              str([_x.n, round(_x.rate_hz, 2), _j["dropped_gaps"], _x.metadata["chunks"]]))
+        _c = _cen.census(_x)
+        _share = sum(c.fraction for c in _c.components)
+        check("census partitions the stream's AC variance (shares sum to 1)", abs(_share - 1.0) < 1e-6, f"{_share:.6f}")
+        check("census reads THIS repo's band registry, not a copy", _cen.band_registry is _bands)
+
     venv = HERE / "analysis/.venv/bin/python"
-    if venv.exists():
-        code = ("import sys; sys.path.insert(0,'analysis'); from fieldlab import session as s; "
-                f"x=s.load_stream('{tmp}/sim00001'); j=x.jitter_report(); "
-                "print(x.n, round(x.rate_hz,2), j['dropped_gaps'], x.metadata['chunks'])")
-        out = subprocess.run([str(venv), "-c", code], capture_output=True, text=True, cwd=str(HERE))
-        parts = out.stdout.split()
-        check("analysis.session.load_stream reads the store (11000 samples, 100 Hz, 1 dropped gap, 11 chunks)",
-              parts == ["11000", "100.0", "1", "11"], out.stdout.strip() or out.stderr[-300:])
+    if venv.exists() and (HERE / "analysis/run.py").exists():
         out = subprocess.run([str(venv), str(HERE / "analysis/run.py"), "jitter", "--stream", f"{tmp}/sim00001",
                               "--from", "2020-01-01T00:00:00Z", "--to", "2030-01-01T00:00:00Z"],
                              capture_output=True, text=True, cwd=str(HERE))
@@ -462,7 +476,8 @@ try:
             time.sleep(0.2)
         check("the job finishes and carries run.py's output", jobs and jobs[0]["state"] == "done" and '"dropped_gaps": 1' in jobs[0]["output"], (jobs[0]["output"][-200:] if jobs else "no job"))
     else:
-        check("analysis venv absent — stream loader not exercised (see analysis/README.md)", True)
+        print("  SKIP  run.py / api/analyze job path — no analysis venv with run.py in this repo "
+              "(the job runs a consumer's analysis; see serve.py _analysis_dir)")
 finally:
     proc.terminate()
     try:
