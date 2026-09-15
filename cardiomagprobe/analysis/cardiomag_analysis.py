@@ -8,6 +8,13 @@ import numpy as np
 import pandas as pd
 from scipy import signal, stats
 
+try:  # epoching, the circular-shift surrogate and the held-out template are cardiac-events'
+    import cardiac_events as _ce
+except ImportError as e:  # pragma: no cover - the message is the point
+    raise ImportError(
+        "cardiomag_analysis needs cardiac-events (the audio-projects monorepo's tools/cardiac-events): "
+        "pip install -e <monorepo>/tools/cardiac-events") from e
+
 AXES = ("mag_x_uT", "mag_y_uT", "mag_z_uT", "mag_magnitude_uT")
 
 @dataclass
@@ -27,11 +34,10 @@ def load_session(folder: str | Path):
     return pd.read_csv(folder / "samples.csv"), json.loads((folder / "manifest.json").read_text())
 
 def interpolate_epochs(t, x, beats, grid):
-    return np.stack([np.interp(beat + grid, t, x) for beat in beats]) if len(beats) else np.empty((0, len(grid)))
+    return _ce.interp_epochs(t, x, beats, grid)
 
 def baseline_correct(epochs, grid, window=(-0.45, -0.15)):
-    mask = (grid >= window[0]) & (grid <= window[1])
-    return epochs - epochs[:, mask].mean(axis=1, keepdims=True)
+    return _ce.baseline_correct(epochs, grid, window)
 
 def motion_filter(df: pd.DataFrame, beats: np.ndarray, settings: Settings):
     t = df.monotonic_timestamp.to_numpy()
@@ -50,7 +56,7 @@ def bootstrap_ci(epochs, rng, n=1000):
 def rms(x): return float(np.sqrt(np.mean(np.square(x))))
 
 def shifted_beats(beats, start, end, offset):
-    return np.sort(start + np.mod(beats - start + offset, end - start))
+    return _ce.circular_shift(beats, start, end, offset)
 
 def analyze_axis(df, beats, axis, settings=Settings()):
     rng = np.random.default_rng(settings.seed)
@@ -80,11 +86,8 @@ def coherence_with_beats(df, beats, axis):
     return signal.coherence(impulses, df[axis].to_numpy(), fs=fs, nperseg=min(512, len(t)))
 
 def held_out_template(df, beats, axis="mag_x_uT", settings=Settings()):
-    t = df.monotonic_timestamp.to_numpy(); dt = np.median(np.diff(t)); grid = np.arange(-settings.pre, settings.post + dt/2, dt)
-    epochs = baseline_correct(interpolate_epochs(t, df[axis].to_numpy(), beats, grid), grid, settings.baseline)
-    split = len(epochs) // 2; template = epochs[:split].mean(0); test = epochs[split:].mean(0)
-    template = (template - template.mean()) / max(np.linalg.norm(template - template.mean()), 1e-12)
-    return {"grid": grid, "template": template, "test_mean": test, "correlation": float(np.corrcoef(template, test)[0, 1])}
+    return _ce.held_out_template(df.monotonic_timestamp.to_numpy(), df[axis].to_numpy(), beats,
+                                 settings.pre, settings.post, settings.baseline)
 
 def template_controls(df, beats, axis="mag_x_uT", settings=Settings()):
     held=held_out_template(df,beats,axis,settings); template=held["template"]; test=held["test_mean"]

@@ -2,4 +2,5 @@ numpy>=1.26
 pandas>=2.1
 scipy>=1.11
 matplotlib>=3.8
+# cardiac-events lives in the audio-projects monorepo: pip install -e <monorepo>/tools/cardiac-events
 

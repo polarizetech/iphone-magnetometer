@@ -73,7 +73,11 @@ files, and carrying its history would have put them in this repo forever. **`cal
 `bodysignals` and `site_survey` run standalone** since `session` and `census` moved in (below).
 **`ladder2` and `prior_ladder` are the one remaining tie**: they plant synthetic cardiac sources with
 `injrec` from the monorepo's `tools/injection-recovery`, and raise with that reason when run
-outside it. `test_analysis.py` (3 tests) passes standalone.
+outside it. **`cardiomag_analysis.py` now depends on `cardiac-events`** (the monorepo's
+`tools/cardiac-events`, installable, imports nothing else from the monorepo). Its epoch cutter,
+baseline correction, circular beat shift and held-out template are that tool's, checked
+bit-identical before and after on the synthetic dataset. `test_analysis.py` (3 tests) passes with
+it installed: `pip install -e <monorepo>/tools/cardiac-events`.
 
 **Note the PPG trigger** against `research/.../mechanisms/ecg-gated-magnetometry.md`: PPG timing
 is adequate as an HRV covariate and was rejected as a *gate*, because pulse-arrival jitter
