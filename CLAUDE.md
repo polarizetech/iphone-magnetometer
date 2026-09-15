@@ -23,9 +23,17 @@ arrangement `universal-wave-translation-layer` and `research` have. A fresh mono
 monorepo stores a 40-character pointer, and changing this tool is a commit **here** plus a pointer
 commit **there**.
 
-**The bar that made extraction possible, and the one to keep:** this repo imports **nothing** from
-the monorepo. Every monorepo-side thing is optional and, when absent, is announced rather than
-passed over — `dev_check.py` prints four `SKIP` lines standalone and they name what is missing.
+**The bar that made extraction possible, and the one to keep: the RECORDER and the SERVER import
+nothing from the monorepo.** Everything monorepo-side they touch is optional and, when absent, is
+announced rather than passed over — `dev_check.py` prints four `SKIP` lines standalone and they
+name what is missing.
+
+**The ANALYSIS is a different matter, and [`README.md`](README.md)'s *Built on* table is the
+list** — `uwtl`, `biosig`, `cardiac-events`, `injrec`, `dataset-fetch`, `elf-stations`. Those are
+shared libraries this instrument genuinely depends on, each **raising with the install line or the
+path it looked for** rather than degrading, because a sweep that silently skips its own source
+model is worse than one that will not start. The recording path stays clean: none of them is needed
+to capture, spool, upload or view a stream.
 
 | what the monorepo adds | how it is reached | absent → |
 |---|---|---|
