@@ -1,5 +1,14 @@
 # Changelog — FieldLab (biomimetic-radar)
 
+## 2026-09-15 — the automatic alias test was wrong
+
+The 2026-08-23 entry below says decimating the record settles the alias question. **It does not.**
+Once sampled, an alias is the folded tone, so nothing done to one recording can tell it from a real
+line; the test passed both. It now reports inconclusive and the question is a manual test in
+`falsify/unexplained-local-line` (record at 100 Hz, then 50 Hz). The app's two rates are exactly
+2:1 if the 50 Hz path decimates, which cannot move an alias of `k·rate ± f` either; a non-integer
+rate option (e.g. 64 Hz) would settle it and is not offered.
+
 ## 2026-08-23 (evening) — automatic verification, morphology, and the signal register
 
 **The tests run themselves now.** Alerts used to end with advice; advice nobody runs is not a
