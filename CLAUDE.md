@@ -71,13 +71,21 @@ prior/injection ladders, site survey, body signals, hard-iron calibration) and d
 **Source only; no build output and no history** — the origin had committed ~9,830 Xcode build
 files, and carrying its history would have put them in this repo forever. **`calibrate`,
 `bodysignals` and `site_survey` run standalone** since `session` and `census` moved in (below).
-**`ladder2` and `prior_ladder` are the one remaining tie**: they plant synthetic cardiac sources with
-`injrec` from the monorepo's `tools/injection-recovery`, and raise with that reason when run
-outside it. **`cardiomag_analysis.py` now depends on `cardiac-events`** (the monorepo's
-`tools/cardiac-events`, installable, imports nothing else from the monorepo). Its epoch cutter,
-baseline correction, circular beat shift and held-out template are that tool's, checked
-bit-identical before and after on the synthetic dataset. `test_analysis.py` (3 tests) passes with
-it installed: `pip install -e <monorepo>/tools/cardiac-events`.
+**`ladder2`, `prior_ladder` and `injection_sweep` are the one remaining tie**: they plant synthetic
+cardiac sources with `injrec` from the monorepo's `tools/injection-recovery`, and raise with that
+reason when run outside it. **`synthetic_validation.py` was removed 2026-09-15**: it swept its own
+amplitudes through a noise model, which is injrec's job done worse. `injection_sweep.py` injects
+into the stillest real FieldLab window instead, and measures `analyze_axis` at **k_95 = 0.019 ×
+host RMS (≈14 nT RMS) in 180 s, 0/24 blank false alarms** (`example_outputs/injection_sweep.json`).
+Building it found a trap worth keeping: event times as sample index / fs drift **377 ms** from this
+phone's real timestamps over 180 s, which smeared every epoch and first read as the null being
+blind at ten times the host RMS. Beats are mapped through the record's own clock now.
+
+**`cardiomag_analysis.py` depends on `cardiac-events`** (the monorepo's `tools/cardiac-events`,
+installable, imports nothing else from the monorepo). Its epoch cutter, baseline correction,
+circular beat shift and held-out template are that tool's, checked bit-identical before and after.
+`test_analysis.py` (3 tests, on a fixture it builds itself) passes with it installed:
+`pip install -e <monorepo>/tools/cardiac-events`.
 
 **Note the PPG trigger** against `research/.../mechanisms/ecg-gated-magnetometry.md`: PPG timing
 is adequate as an HRV covariate and was rejected as a *gate*, because pulse-arrival jitter

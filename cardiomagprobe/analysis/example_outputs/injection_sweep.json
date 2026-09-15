@@ -1,0 +1,134 @@
+{
+  "host": {
+    "device": "8366a4a9",
+    "seconds": 180.0,
+    "rate_hz": 102.04,
+    "still_fraction": 0.996,
+    "axis": "mag_x_uT",
+    "rms_nT": 738.27
+  },
+  "detector": {
+    "statistic": "analyze_axis empirical p (response-window RMS vs circular beat shifts)",
+    "alpha": 0.0125,
+    "surrogates": 200
+  },
+  "points": [
+    {
+      "k": 0.003,
+      "amplitude_rms_nT": 2.215,
+      "trials": 12,
+      "recovered": 0,
+      "ci95": [
+        0.0,
+        0.242
+      ]
+    },
+    {
+      "k": 0.0079,
+      "amplitude_rms_nT": 5.832,
+      "trials": 12,
+      "recovered": 0,
+      "ci95": [
+        0.0,
+        0.242
+      ]
+    },
+    {
+      "k": 0.01005,
+      "amplitude_rms_nT": 7.416,
+      "trials": 12,
+      "recovered": 2,
+      "ci95": [
+        0.047,
+        0.448
+      ]
+    },
+    {
+      "k": 0.01411,
+      "amplitude_rms_nT": 10.416,
+      "trials": 12,
+      "recovered": 8,
+      "ci95": [
+        0.391,
+        0.862
+      ]
+    },
+    {
+      "k": 0.02009,
+      "amplitude_rms_nT": 14.832,
+      "trials": 12,
+      "recovered": 12,
+      "ci95": [
+        0.758,
+        1.0
+      ]
+    },
+    {
+      "k": 0.0208,
+      "amplitude_rms_nT": 15.357,
+      "trials": 12,
+      "recovered": 12,
+      "ci95": [
+        0.758,
+        1.0
+      ]
+    },
+    {
+      "k": 0.02822,
+      "amplitude_rms_nT": 20.833,
+      "trials": 12,
+      "recovered": 12,
+      "ci95": [
+        0.758,
+        1.0
+      ]
+    },
+    {
+      "k": 0.05477,
+      "amplitude_rms_nT": 40.437,
+      "trials": 12,
+      "recovered": 12,
+      "ci95": [
+        0.758,
+        1.0
+      ]
+    },
+    {
+      "k": 0.14422,
+      "amplitude_rms_nT": 106.477,
+      "trials": 12,
+      "recovered": 12,
+      "ci95": [
+        0.758,
+        1.0
+      ]
+    },
+    {
+      "k": 0.37977,
+      "amplitude_rms_nT": 280.373,
+      "trials": 12,
+      "recovered": 12,
+      "ci95": [
+        0.758,
+        1.0
+      ]
+    },
+    {
+      "k": 1.0,
+      "amplitude_rms_nT": 738.27,
+      "trials": 12,
+      "recovered": 12,
+      "ci95": [
+        0.758,
+        1.0
+      ]
+    }
+  ],
+  "k_50": 0.012754403081583963,
+  "k_95": 0.01919307298146813,
+  "false_alarm_rate": 0.0,
+  "blank_trials": 24,
+  "bound": "BOUND -- no cardiac signal above 0.01919 x host RMS is present; the pipeline recovers 95% of injections at that amplitude (measured detection curve, not a proxy).",
+  "note": "An injection test validates the analysis, never the world.",
+  "quick": false
+}

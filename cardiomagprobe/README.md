@@ -47,7 +47,7 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -r requirements.txt
 python analyze_session.py /path/to/CardioMag-session --out report
-python synthetic_validation.py --out example_outputs
+python injection_sweep.py --out example_outputs   # needs the audio-projects monorepo (injrec) and a FieldLab stream store
 python -m unittest test_analysis.py
 ```
 
@@ -63,7 +63,7 @@ An observation is worth follow-up only if real timing beats shuffled and circula
 
 - `CardioMagProbe/` — SwiftUI app, acquisition, export, and on-device analysis
 - `CardioMagProbeTests/` — alignment, surrogate, jitter, and held-out tests
-- `analysis/` — independent Python analysis and injection validation
+- `analysis/` — independent Python analysis; `injection_sweep.py` measures its sensitivity by injecting a heartbeat into real FieldLab noise with injrec
 - `docs/PROTOCOL.md` — preregistered acquisition and decision workflow
 - `docs/SCHEMA.md` — CSV/JSON contract
 - `docs/ARTIFACT_CHECKLIST.md` — required artifact and control review
