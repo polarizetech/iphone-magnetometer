@@ -199,7 +199,10 @@ final class StreamController: ObservableObject {
         buffered = 0
         let thisSeq = seq
         seq += 1
-        let args = (deviceID: deviceID, deviceName: settings.deviceName, rate: settings.sampleRateHz,
+        // The rate the sensor was actually set to, not the picker's value: they differed silently
+        // for 14 minutes on 2026-09-16 (setting 64 Hz, sensor 100 Hz), and the chunks said 64.
+        let applied = sensor.configuredRateHz > 0 ? sensor.configuredRateHz : settings.sampleRateHz
+        let args = (deviceID: deviceID, deviceName: settings.deviceName, rate: applied,
                     emitter: emitterStamp?(), model: Self.deviceModel, system: UIDevice.current.systemVersion,
                     app: Self.appVersion, aux: environment.read())
         encodeQueue.async { [weak self] in

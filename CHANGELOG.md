@@ -1,5 +1,19 @@
 # Changelog — FieldLab (biomimetic-radar)
 
+## 2026-09-16 — a changed sample rate was silently ignored, and the chunks said otherwise
+
+The first 64 Hz run (stream `e0b6f279`) delivered **101.32–101.46 Hz** for 14 minutes. The Stream
+screen's live preview had started the sensor at 100 Hz and kept holding it after the stream
+stopped. The restarted stream's 64 Hz request was refused ("kept that rate"), and the only sign
+was an orange footnote. Every chunk still recorded `requestedRateHz: 64`.
+
+- **`SensorManager.start`**: a measurement asking for a different rate now re-times the hardware
+  when only the preview holds it. A second *measurement* is still refused, with the same note.
+- **Chunks record the rate the sensor was set to**, not the picker value.
+- Treat `e0b6f279`'s `requestedRateHz` as wrong; its achieved rates are correct.
+
+Installed on the phone the same day. Whether CoreMotion actually delivers 64 Hz is still unmeasured.
+
 ## 2026-09-15 — the automatic alias test was wrong
 
 The 2026-08-23 entry below says decimating the record settles the alias question. **It does not.**

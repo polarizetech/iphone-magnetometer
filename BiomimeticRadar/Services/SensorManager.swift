@@ -56,7 +56,12 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
     /// Start, or join, the running acquisition.
     ///
     /// - Returns: `nil` if the hardware is now running at `sampleRate`, or a note explaining that it
-    ///   is already running at a different rate for another owner (and was left alone).
+    ///   is already running at a different rate for another measurement (and was left alone).
+    ///
+    /// The preview is a viewer, not a measurement: a measurement asking for a different rate
+    /// re-times the hardware instead of inheriting the preview's. Found 2026-09-16, when a stream
+    /// set to 64 Hz ran at ~101 Hz for 14 minutes because the preview had started the sensor at
+    /// 100 Hz, and the only sign was an orange footnote.
     @discardableResult
     func start(sampleRate: Double = 50, includeLocation: Bool = false, attitude: Bool = true,
                owner: Owner = .experiment) -> String? {
@@ -64,29 +69,41 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
             errorMessage = "A physical iPhone with a magnetometer is required."
             return errorMessage
         }
+        let wanted = max(1, min(100, sampleRate))
         if isRunning {
             owners.insert(owner)
             if includeLocation { location.requestWhenInUseAuthorization(); location.startUpdatingLocation() }
-            if abs(configuredRateHz - sampleRate) > 0.01 {
-                return String(format: "Sensor already running at %.0f Hz for %@; kept that rate", configuredRateHz,
-                              owners.subtracting([owner]).map(\.rawValue).joined(separator: ", "))
+            guard abs(configuredRateHz - wanted) > 0.01 else { return nil }
+            if owner != .preview && owners.subtracting([owner, .preview]).isEmpty {
+                motion.stopMagnetometerUpdates()
+                motion.stopDeviceMotionUpdates()
+                configure(rate: wanted, attitude: attitude || attitudeEnabled)
+                return nil
             }
-            return nil
+            return String(format: "Sensor already running at %.0f Hz for %@; kept that rate", configuredRateHz,
+                          owners.subtracting([owner]).map(\.rawValue).joined(separator: ", "))
         }
         errorMessage = nil
         owners = [owner]
-        configuredRateHz = max(1, min(100, sampleRate))
+        if includeLocation {
+            location.requestWhenInUseAuthorization()
+            location.startUpdatingLocation()
+        }
+        configure(rate: wanted, attitude: attitude)
+        return nil
+    }
+
+    /// Set the update intervals and (re)start the magnetometer and device-motion updates.
+    private func configure(rate: Double, attitude: Bool) {
+        configuredRateHz = rate
         attitudeEnabled = attitude
-        let interval = 1 / configuredRateHz
+        let interval = 1 / rate
         motion.magnetometerUpdateInterval = interval
         motion.deviceMotionUpdateInterval = interval
         magnetometerTimes.removeAll(keepingCapacity: true)
         motionTimes.removeAll(keepingCapacity: true)
         recentSamples.removeAll(keepingCapacity: true)
-        if includeLocation {
-            location.requestWhenInUseAuthorization()
-            location.startUpdatingLocation()
-        }
+        latestMotion = nil
         if motion.isDeviceMotionAvailable && attitude {
             motion.startDeviceMotionUpdates(using: .xArbitraryCorrectedZVertical, to: sensorQueue) { [weak self] value, _ in
                 guard let self, let value else { return }
@@ -108,7 +125,6 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
             Task { @MainActor in self.accept(value) }
         }
         isRunning = true
-        return nil
     }
 
     /// Release one owner's hold. The hardware stops only when the last owner lets go.
