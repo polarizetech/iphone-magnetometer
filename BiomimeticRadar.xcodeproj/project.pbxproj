@@ -29,6 +29,7 @@
 		DE984500C0D96E6DE8E957A3 /* BiomimeticRadarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9685A5FB2C012DE6D5495F0 /* BiomimeticRadarApp.swift */; };
 		E214A3E36042B91F78F925CA /* SelfEmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB204243D4C708221685C2BA /* SelfEmitter.swift */; };
 		E52FAB98232BF0972487E478 /* EmitterSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13003BE3BE01BF91B682F0F /* EmitterSchedule.swift */; };
+		ECEFF1A05C77BF9D58625E6C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4EAB9DB56C9BCC9FAC11DED0 /* Assets.xcassets */; };
 		ED4D73F7DF41C4E4CBDE60CE /* StreamUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971F91303E1C98D708AD0650 /* StreamUploader.swift */; };
 		EFEDADEF10FDD41C56CE6812 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = F9054904AF542409B6F2A3C3 /* README.md */; };
 		F894DC52137FD85DB990E661 /* session-a-raw.csv in Resources */ = {isa = PBXBuildFile; fileRef = 36B52B392BD2FC898EC27B14 /* session-a-raw.csv */; };
@@ -53,16 +54,17 @@
 		2EB33D859941FBC85E86036F /* SignalProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalProcessorTests.swift; sourceTree = "<group>"; };
 		308EAEE40B9F0B956CCAFA22 /* AuditFixTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditFixTests.swift; sourceTree = "<group>"; };
 		34CB2F01DCABCD5749C727E0 /* StreamController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamController.swift; sourceTree = "<group>"; };
-		36B52B392BD2FC898EC27B14 /* session-a-raw.csv */ = {isa = PBXFileReference; lastKnownFileType = text; path = "session-a-raw.csv"; sourceTree = "<group>"; };
+		36B52B392BD2FC898EC27B14 /* session-a-raw.csv */ = {isa = PBXFileReference; path = "session-a-raw.csv"; sourceTree = "<group>"; };
 		4538B8F0B4630464ED469045 /* session-a-metadata.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "session-a-metadata.json"; sourceTree = "<group>"; };
 		4899B8586F4A1900E2A3E235 /* SensorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorModels.swift; sourceTree = "<group>"; };
+		4EAB9DB56C9BCC9FAC11DED0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		5A204CFB9DC4BBF07C5E3E8F /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		5E8505099982CC708BBA9CA2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		85ED5C7BCC4E156E90327AF0 /* InterferenceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterferenceRegistry.swift; sourceTree = "<group>"; };
 		971F91303E1C98D708AD0650 /* StreamUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamUploader.swift; sourceTree = "<group>"; };
 		AB4A27B3EC4A94AFBDF291D9 /* EnvironmentProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentProbe.swift; sourceTree = "<group>"; };
 		AE475ADFC95A7BBDC2942C81 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
-		B19FC01147D1BE2663B9F2D5 /* BiomimeticRadar.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BiomimeticRadar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B19FC01147D1BE2663B9F2D5 /* BiomimeticRadar.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BiomimeticRadar.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		B58BF5C9B312B3A27D047E9E /* BiomimeticRadarTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BiomimeticRadarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		BF71A4FB5208A7A82C685C62 /* StreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamView.swift; sourceTree = "<group>"; };
 		C3A494239883E73EBC0239ED /* LightningCouplingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightningCouplingTests.swift; sourceTree = "<group>"; };
@@ -188,6 +190,7 @@
 		E8EF21648637BDC1914BE06F /* Resources */ = {
 			isa = PBXGroup;
 			children = (
+				4EAB9DB56C9BCC9FAC11DED0 /* Assets.xcassets */,
 				5E8505099982CC708BBA9CA2 /* Info.plist */,
 			);
 			path = Resources;
@@ -220,6 +223,7 @@
 			buildConfigurationList = 447F491650485445255A2515 /* Build configuration list for PBXNativeTarget "BiomimeticRadar" */;
 			buildPhases = (
 				0F4871FE9D74BFE59DACA823 /* Sources */,
+				E0E6E907FFD581F8C8C87B82 /* Resources */,
 			);
 			buildRules = (
 			);
@@ -242,7 +246,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					01A0100767D0D48E92F70BA3 = {
-						DevelopmentTeam = "";
+						DevelopmentTeam = YOURTEAMID;
+					};
+					EB3149516039EC2C6AAA3FE3 = {
+						DevelopmentTeam = YOURTEAMID;
 					};
 				};
 			};
@@ -274,6 +281,14 @@
 				EFEDADEF10FDD41C56CE6812 /* README.md in Resources */,
 				36994FA8E05EF3A6AD588C7A /* session-a-metadata.json in Resources */,
 				F894DC52137FD85DB990E661 /* session-a-raw.csv in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E0E6E907FFD581F8C8C87B82 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ECEFF1A05C77BF9D58625E6C /* Assets.xcassets in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -333,7 +348,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = YOURTEAMID;
 				INFOPLIST_FILE = BiomimeticRadar/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -380,7 +394,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -446,7 +460,6 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				DEVELOPMENT_TEAM = YOURTEAMID;
 				INFOPLIST_FILE = BiomimeticRadar/Resources/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
@@ -493,7 +506,7 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = "";
+				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
