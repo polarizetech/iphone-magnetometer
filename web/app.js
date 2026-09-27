@@ -68,7 +68,9 @@ const spectro = new Spectrogram($('spectrogram'), { columns: 360, fmax: 50 });
 // ----------------------------------------------------------------------------- helpers
 function fmt(v, d = 2) { return (v == null || !isFinite(v)) ? '—' : Number(v).toFixed(d); }
 function ago(epoch) { if (!epoch) return '—'; const s = Date.now() / 1000 - epoch; return s < 90 ? `${s.toFixed(0)} s` : s < 5400 ? `${(s / 60).toFixed(0)} min` : `${(s / 3600).toFixed(1)} h`; }
-function kpi(label, value, cls = '') { return `<div class="kpi"><p class="ui-label">${label}</p><div class="val ${cls}">${value}</div></div>`; }
+// Labels and values are text, never markup: several values (device name, model, thermal and battery
+// state) arrive unauthenticated from the phone's hello and chunk headers.
+function kpi(label, value, cls = '') { return `<div class="kpi"><p class="ui-label">${escapeHtml(label)}</p><div class="val ${cls}">${escapeHtml(value)}</div></div>`; }
 
 /** The phone's per-chunk covariates. Each one explains a way the RECORD can move without the world
  *  moving — a warm phone drifts, a charging phone has current, a falling barometer means weather.
@@ -345,8 +347,8 @@ async function loadStation() {
       <p class="hint">${esc(res.simultaneity_note || '')}</p>
     </div>
     <div class="kpis">
-      ${kpi('station', esc(res.station || '—'))}
-      ${kpi('hour', esc((res.utc_start || '').slice(0, 16)))}
+      ${kpi('station', res.station || '—')}
+      ${kpi('hour', (res.utc_start || '').slice(0, 16))}
       ${kpi('rate', `${res.rate_hz} Hz`)}
       ${kpi('nyquist', `${res.nyquist_hz} Hz`, 'is-good')}
       ${kpi('archive covers', `${res.coverage?.start} → ${res.coverage?.end}`, 'is-warn')}
@@ -560,7 +562,7 @@ async function loadAlerts() {
     <p class="means">${esc(a.caveat || '')}</p>`;
 }
 
-function esc(t) { return String(t == null ? '' : t).replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c])); }
+const esc = escapeHtml;
 
 async function scanForSignals() {
   if (!S.device) return;
@@ -585,8 +587,8 @@ async function scanForSignals() {
 async function loadJobs() {
   const res = await api('api/jobs');
   $('jobs').innerHTML = res.jobs.map(j => `<div class="job"><div class="head"><span class="pill ${j.state === 'done' ? 'is-on' : j.state === 'failed' ? 'is-bad' : ''}">${j.id} · ${j.state}</span>
-    <span>${j.command} · ${j.device} · ${new Date(j.from * 1000).toISOString()} → ${new Date(j.to * 1000).toISOString()}</span></div>
-    <div class="out">${(j.output || '(no output yet)').replace(/[&<>]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]))}</div></div>`).join('') || '<p class="hint">No jobs yet.</p>';
+    <span>${escapeHtml(j.command)} · ${escapeHtml(j.device)} · ${new Date(j.from * 1000).toISOString()} → ${new Date(j.to * 1000).toISOString()}</span></div>
+    <div class="out">${escapeHtml(j.output || '(no output yet)')}</div></div>`).join('') || '<p class="hint">No jobs yet.</p>';
 }
 
 async function runJob() {

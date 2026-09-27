@@ -144,10 +144,8 @@ def default_policies() -> dict[str, str]:
     return {b.id: b.default_policy for b in BANDS}
 
 
-# `alias_of` and `visibility` MIRROR `uwtl.adequacy.alias_of` / `fold` (uwtl owns the generic form
-# since 2026-09-15). They stay here because this module must import with the standard library alone:
-# `serve.py` loads it without numpy or uwtl, and a failed import silently empties /api/bands.
-# `dev_check.py` asserts the two agree for every band, rate and target.
+# This module must import with the standard library alone: `serve.py` loads it without numpy, and a
+# failed import silently empties /api/bands.
 def alias_of(hz: float, rate_hz: float) -> float:
     """Where a real frequency lands after sampling. A tone above Nyquist folds; it does not vanish."""
     if rate_hz <= 0:

@@ -38,14 +38,176 @@ MAINS_HZ = 60.0
 ALTERNATE_MAINS_HZ = 50.0
 
 
-# ----------------------------------------------------------------------------- spectrum, and motion
+# ----------------------------------------------------------------------------- spectrum
 
-# The line arithmetic lives in uwtl (`uwtl.spectral`, moved there 2026-09-15): nothing in it knows
-# what a phone is. It is still bit-for-bit the Swift `SignalCensus`/`FFT` arithmetic, and these
-# names stay importable from here so `census.prominence_threshold_db` et al. keep working.
-from uwtl.spectral import (Peak, anonymous_peaks, band_power, half_split_db,  # noqa: E402,F401
-                           local_floor, prominence, prominence_threshold_db, spectrum,
-                           usable_length, variance_explained)
+def usable_length(count: int) -> int:
+    """Largest power of two not exceeding `count` — the Swift FFT's own rule, kept so the two
+    implementations bin the spectrum identically."""
+    if count < 8:
+        return 0
+    n = 1
+    while n * 2 <= count:
+        n *= 2
+    return n
+
+
+def spectrum(signal: np.ndarray, rate_hz: float) -> tuple[np.ndarray, np.ndarray]:
+    """Hann-windowed magnitude-squared spectrum in LINEAR power, matching `FFT.spectrum`.
+
+    Linear, not dB: a budget has to be summable, and dB is not. The Nyquist bin is dropped, as in
+    the Swift (`bins = n / 2`).
+    """
+    n = usable_length(len(signal))
+    if n < 8:
+        return np.zeros(0), np.zeros(0)
+    x = np.asarray(signal[:n], dtype=float) * np.hanning(n)
+    spec = np.fft.rfft(x)
+    bins = n // 2
+    power = (np.abs(spec[:bins]) ** 2) / (n * n)
+    freqs = np.arange(bins) * rate_hz / n
+    return freqs, power
+
+
+def local_floor(power: np.ndarray, index: int, exclude: int, span: int) -> float:
+    lo, hi = max(0, index - span), min(len(power) - 1, index + span)
+    idx = np.arange(lo, hi + 1)
+    idx = idx[np.abs(idx - index) > exclude]
+    return float(np.median(power[idx])) if idx.size else 0.0
+
+
+def prominence_threshold_db(bin_count: int, alpha: float = 0.01) -> float:
+    """The prominence a peak needs to be worth naming, given how many bins were searched.
+
+    Computed, not chosen. One bin of a Gaussian-noise spectrum is exponentially distributed, so the
+    largest of `N` sits about `ln N` above the mean by chance alone, and the local floor here is a
+    MEDIAN, which is `ln 2` of the mean. For a family-wise false-alarm rate `alpha` the bar is
+    `ln(N/alpha) / ln 2`, reported in dB. At 1024 bins that is **12.2 dB**; a flat 4 dB once let
+    pure noise produce eight "unidentified lines".
+    """
+    if bin_count <= 1 or not (0 < alpha < 1):
+        return 12.0
+    return float(10 * np.log10(np.log(bin_count / alpha) / np.log(2.0)))
+
+
+def prominence(power: np.ndarray, freqs: np.ndarray, centre: float, resolution: float) -> float | None:
+    if freqs.size == 0:
+        return None
+    index = int(np.argmin(np.abs(freqs - centre)))
+    if abs(freqs[index] - centre) >= max(resolution, 0.5):
+        return None
+    floor = local_floor(power, index, exclude=3, span=40)
+    if floor <= 0 or power[index] <= 0:
+        return None
+    return float(10 * np.log10(power[index] / floor))
+
+
+def band_power(signal: np.ndarray, rate_hz: float, centre: float, half_width: float) -> float:
+    freqs, power = spectrum(signal, rate_hz)
+    if freqs.size == 0:
+        return 0.0
+    width = max(half_width, rate_hz / max(1, len(signal)))
+    return float(power[np.abs(freqs - centre) <= width].sum())
+
+
+def half_split_db(signal: np.ndarray, rate_hz: float, centre: float, half_width: float) -> float | None:
+    """Power in the second half of the record versus the first, in dB. Positive means it grew.
+
+    A component genuinely absent from one half is the most interesting case there is, so both halves
+    are floored at a small fraction of the record's power rather than returning `None` — the arrival
+    still reads as a large positive dB.
+    """
+    if len(signal) < 256:
+        return None
+    half = len(signal) // 2
+    first = band_power(signal[:half], rate_hz, centre, half_width)
+    second = band_power(signal[half:], rate_hz, centre, half_width)
+    eps = 1e-12 * max(1.0, first + second)
+    return float(10 * np.log10(max(second, eps) / max(first, eps)))
+
+
+@dataclass
+class Peak:
+    frequency: float
+    prominence_db: float
+    bins: np.ndarray
+
+
+def anonymous_peaks(power: np.ndarray, freqs: np.ndarray, claimed: np.ndarray, resolution: float,
+                    limit: int = 8, threshold_db: float | None = None,
+                    separation_bins: int = 6) -> list[Peak]:
+    """Lines that are at no named frequency. Named by index, never by guess.
+
+    Three guards, the first two added because a noiseless test record reported **eight** anonymous
+    lines for one pure tone — a windowed sinusoid has a leakage skirt and every bin in it clears a
+    threshold when the floor it is measured against is also skirt:
+
+    1. a candidate must be a **local maximum**, so skirt bins cannot nominate themselves;
+    2. a candidate within `separation_bins` of an accepted peak *is* that peak;
+    3. an accepted peak **claims its skirt**, so the leakage energy is booked to the line that made
+       it rather than left in the broadband floor.
+
+    The alpha is stricter than the band test's on purpose: naming a `U-nn` asserts something is
+    there and invites someone to chase it, while leaving a weak line in the floor costs nothing.
+    """
+    bar = threshold_db if threshold_db is not None else prominence_threshold_db(len(power), alpha=0.001)
+    found: list[Peak] = []
+    candidates = [i for i in range(len(power)) if not claimed[i] and freqs[i] > 0.1]
+    candidates.sort(key=lambda i: power[i], reverse=True)
+    for index in candidates:
+        if len(found) >= limit or claimed[index]:
+            continue
+        lo, hi = max(0, index - 2), min(len(power) - 1, index + 2)
+        if power[index] < power[lo:hi + 1].max():
+            continue
+        if any(abs(p.frequency - freqs[index]) < separation_bins * resolution for p in found):
+            continue
+        floor = local_floor(power, index, exclude=separation_bins, span=60)
+        if floor <= 0 or power[index] <= 0:
+            continue
+        prom = float(10 * np.log10(power[index] / floor))
+        if prom < bar:
+            continue
+        skirt = np.arange(max(0, index - separation_bins), min(len(power), index + separation_bins + 1))
+        skirt = skirt[~claimed[skirt]]
+        claimed[skirt] = True
+        found.append(Peak(float(freqs[index]), prom, skirt))
+    return sorted(found, key=lambda p: p.frequency)
+
+
+# ----------------------------------------------------------------------------- motion
+
+def variance_explained(y: np.ndarray, predictors: list[np.ndarray], ridge: float = 1e-6) -> float:
+    """Adjusted R² of `y` on `predictors`, ridge-regularised, constant columns dropped.
+
+    Dropping constants rather than failing on them matters: a phone rotating about one axis leaves
+    two quaternion components dead flat, and letting a zero-variance column veto the solve returned
+    R² = 0 for a record that was entirely orientation-driven.
+    """
+    n = min([len(y)] + [len(p) for p in predictors]) if predictors else 0
+    if n <= len(predictors) + 8 or not predictors:
+        return 0.0
+
+    def standardise(v: np.ndarray) -> np.ndarray:
+        v = np.asarray(v[:n], dtype=float)
+        sd = v.std()
+        return (v - v.mean()) / sd if sd > 0 else np.zeros(n)
+
+    target = standardise(y)
+    columns = [c for c in (standardise(p) for p in predictors) if np.any(c != 0)]
+    if not columns:
+        return 0.0
+    k = len(columns)
+    X = np.column_stack(columns)
+    gram = X.T @ X / n + ridge * np.eye(k)
+    rhs = X.T @ target / n
+    try:
+        beta = np.linalg.solve(gram, rhs)
+    except np.linalg.LinAlgError:
+        return 0.0
+    residual = float(np.mean((target - X @ beta) ** 2))
+    r2 = 1 - residual                                   # target variance is 1
+    adjusted = 1 - (1 - r2) * (n - 1) / (n - k - 1)
+    return float(min(1.0, max(0.0, adjusted)))
 
 
 @dataclass

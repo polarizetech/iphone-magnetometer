@@ -172,7 +172,6 @@ def sway(session) -> dict:
     affective state measure. Requires the phone worn at sacrum or sternum while STANDING.
     """
     fs = float(session.rate_hz)
-    xyz = np.asarray(session.xyz, float)     # placeholder shape check only
     acc = np.asarray(session.acceleration_magnitude, float)
     if acc is None or acc.size < int(fs * 20):
         return {"available": False, "reason": "under 20 s of accelerometer data"}

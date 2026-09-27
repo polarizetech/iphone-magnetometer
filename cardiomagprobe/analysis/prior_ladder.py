@@ -275,7 +275,7 @@ def main() -> int:
           f"{host['seconds']:.0f} s @ {host['fs']:.1f} Hz")
     print(f"      host RMS {host['rms_nt']:.2f} nT   "
           f"cardiac-band ASD {host['asd_cardiac_nt']:.2f} nT/sqrt(Hz)")
-    print(f"      REAL iPhone magnetometer noise, not synthetic\n")
+    print("      REAL iPhone magnetometer noise, not synthetic\n")
 
     rows = run(host, trials=args.trials)
     print(f"{'prior level':18s} {'k95':>8s} {'k95 in nT':>11s} {'k50 in nT':>11s} "

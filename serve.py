@@ -133,10 +133,19 @@ CLAIM_WEB = ANALYSIS.parent / "watch"
 BAND_REGISTRY_SWIFT = HERE / "BiomimeticRadar" / "Processing" / "BandRegistry.swift"
 INTERFERENCE_SWIFT = HERE / "BiomimeticRadar" / "Processing" / "InterferenceRegistry.swift"
 FORMAT = "fieldlab-stream/1"
+CHUNK_CONTENT_TYPE = "application/x-fieldlab-chunk"
+# POSTs must carry one of these. A browser can send text/plain, a form, or no type across origins
+# without asking first; anything else needs a preflight, which this server never grants.
+POST_CONTENT_TYPES = ("application/json", CHUNK_CONTENT_TYPE)
+
+
+class ChunkConflict(ValueError):
+    """A different chunk already holds this seq. The stored one is the only copy, so it is kept."""
 MAX_CHUNK_BYTES = 64 * 1024 * 1024
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 # The stream CSV's columns, by name. `analysis/fieldlab/session.py` reads these same names.
-CSV_HEADER = "monotonic_s,wall_clock,mx_uT,my_uT,mz_uT,magnitude_uT,ax_g,ay_g,az_g,gx_rads,gy_rads,gz_rads,qx,qy,qz,qw,orientation,latitude,longitude"
+CSV_HEADER = ("monotonic_s,wall_clock,mx_uT,my_uT,mz_uT,magnitude_uT,ax_g,ay_g,az_g,"
+              "gx_rads,gy_rads,gz_rads,qx,qy,qz,qw,orientation,latitude,longitude")
 ANALYZE_COMMANDS = ("structure", "context", "channel", "jitter", "baseline", "census",
                     "coupling", "alerts", "identify", "station")
 
@@ -300,6 +309,14 @@ class Store:
         device, stream, seq = header.get("deviceID"), header.get("streamID"), header.get("seq")
         if not (_valid_id(device) and _valid_id(stream) and isinstance(seq, int) and seq >= 0):
             raise ValueError("bad deviceID / streamID / seq")
+        # Every reader of the manifest does arithmetic on these; one bad row used to break /api/status.
+        if not (isinstance(header.get("sampleCount"), int) and header["sampleCount"] >= 0):
+            raise ValueError("sampleCount must be a non-negative integer")
+        for key in ("startedAt", "endedAt"):
+            try:
+                _iso_to_epoch(header[key])
+            except (KeyError, AttributeError, TypeError, ValueError):
+                raise ValueError(f"{key} must be an ISO-8601 time") from None
         csv_bytes = file[newline + 1:]
         digest = hashlib.sha256(csv_bytes).hexdigest()
         if header.get("sha256") != digest:
@@ -313,9 +330,15 @@ class Store:
             duplicate = False
             if chunk_path.exists():
                 existing = hashlib.sha256(chunk_path.read_bytes()).hexdigest()
-                duplicate = existing == digest
+                if existing != digest:
+                    raise ChunkConflict(f"seq {seq} is already stored with different bytes; the stored chunk is kept")
+                duplicate = True
+            # A crash between writing the file and appending its row left the chunk on disk but out of
+            # the manifest, and the phone's retry then read as a duplicate. The retry writes the row.
+            logged = duplicate and any(r.get("seq") == seq for r in self.manifest(device, stream))
             if not duplicate:
                 _atomic_write(chunk_path, csv_bytes)
+            if not logged:
                 row = {k: header.get(k) for k in ("seq", "startedAt", "endedAt", "firstMonotonic", "lastMonotonic",
                                                   "sampleCount", "requestedRateHz", "achievedRateHz", "emitter",
                                                   "aux", "sha256", "deviceName", "deviceModel", "systemVersion",
@@ -409,8 +432,10 @@ class Store:
                         if t < t0 or t > t1:
                             continue
                         cols["t"].append(t)
-                        cols["mx"].append(float(parts[2])); cols["my"].append(float(parts[3]))
-                        cols["mz"].append(float(parts[4])); cols["mag"].append(float(parts[5]))
+                        cols["mx"].append(float(parts[2]))
+                        cols["my"].append(float(parts[3]))
+                        cols["mz"].append(float(parts[4]))
+                        cols["mag"].append(float(parts[5]))
         # sort by time across streams (streams do not overlap, but be safe)
         if cols["t"] and any(cols["t"][i] > cols["t"][i + 1] for i in range(len(cols["t"]) - 1)):
             order = sorted(range(len(cols["t"])), key=cols["t"].__getitem__)
@@ -487,7 +512,8 @@ def interference_from_swift(path: Path = INTERFERENCE_SWIFT) -> list[dict]:
     text = path.read_text()
     out = []
     for m in _SRC_RE.finditer(text):
-        entry = {k: m.group(k) for k in ("id", "name", "origin", "character", "location", "effect", "tell", "mitigation", "order")}
+        keys = ("id", "name", "origin", "character", "location", "effect", "tell", "mitigation", "order")
+        entry = {k: m.group(k) for k in keys}
         entry["orderOfMagnitude"] = entry.pop("order")
         for k in ("effect", "tell", "mitigation"):
             entry[k] = entry[k].replace('\\"', '"')
@@ -695,7 +721,7 @@ class Handler(SimpleHTTPRequestHandler):
     def log_message(self, fmt, *args):  # quieter
         if "/api/events" in str(args[0] if args else ""):
             return
-        sys.stderr.write("%s - %s\n" % (self.address_string(), fmt % args))
+        sys.stderr.write(f"{self.address_string()} - {fmt % args}\n")
 
     # -- routing helpers
     def _key(self) -> str:
@@ -751,11 +777,9 @@ class Handler(SimpleHTTPRequestHandler):
         # on 8204 fetching the live stream from 8212 is cross-origin and blocked without this --
         # which is the whole point of the tool being shared.
         #
-        # The asymmetry is deliberate and is a tighter posture than `eeg-bridge`'s blanket CORS:
-        # the mutating routes here (`/api/stream/chunk`, `/api/runbook/step`,
-        # `/api/register/confirm`) send NO allow-origin header, so a browser refuses a
-        # cross-origin write. Any project may READ what the phone recorded; only this tool's own
-        # pages may write to the record.
+        # Writes are closed to other origins by `do_POST`, not here: withholding allow-origin only
+        # stops a page READING a response, and a cross-origin POST is still sent. Requiring a
+        # JSON or chunk Content-Type forces a preflight, and OPTIONS never allows one.
         if self.command in ("GET", "HEAD", "OPTIONS"):
             self.send_header("Access-Control-Allow-Origin", "*")
         super().end_headers()
@@ -799,7 +823,12 @@ class Handler(SimpleHTTPRequestHandler):
             return "/dev/null/blocked"
         if key == "/":
             key = "/index.html"
-        return str(WEB / key.lstrip("/"))
+        # Everything else is a file inside web/. Resolving first is what stops `/../` reaching the
+        # rest of the disk; the name checks above are case-sensitive and cannot do that alone.
+        candidate = (WEB / key.lstrip("/")).resolve()
+        if WEB.resolve() not in candidate.parents:
+            return "/dev/null/blocked"
+        return str(candidate)
 
     # -- verbs
     def do_GET(self):
@@ -950,6 +979,9 @@ class Handler(SimpleHTTPRequestHandler):
 
     def do_POST(self):
         key = self._key()
+        ctype = (self.headers.get("Content-Type") or "").split(";", 1)[0].strip().lower()
+        if ctype not in POST_CONTENT_TYPES:
+            return self._error(415, f"POST needs Content-Type {' or '.join(POST_CONTENT_TYPES)}")
         try:
             if key == "/api/stream/chunk":
                 body = self._body()
@@ -958,6 +990,8 @@ class Handler(SimpleHTTPRequestHandler):
                 compression = self.headers.get("X-FieldLab-Compression", "deflate-raw")
                 try:
                     return self._json(STORE.ingest(body, compression))
+                except ChunkConflict as exc:
+                    return self._error(409, str(exc))
                 except ValueError as exc:
                     return self._error(422, str(exc))
             if key == "/api/stream/hello":

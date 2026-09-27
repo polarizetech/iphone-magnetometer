@@ -27,7 +27,8 @@ import urllib.request
 import zlib
 from datetime import datetime, timezone
 
-HEADER = "monotonic_s,wall_clock,mx_uT,my_uT,mz_uT,magnitude_uT,ax_g,ay_g,az_g,gx_rads,gy_rads,gz_rads,qx,qy,qz,qw,orientation,latitude,longitude"
+HEADER = ("monotonic_s,wall_clock,mx_uT,my_uT,mz_uT,magnitude_uT,ax_g,ay_g,az_g,"
+          "gx_rads,gy_rads,gz_rads,qx,qy,qz,qw,orientation,latitude,longitude")
 FORMAT = "fieldlab-stream/1"
 
 

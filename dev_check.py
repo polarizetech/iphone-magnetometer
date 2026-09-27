@@ -87,18 +87,13 @@ for col in ("monotonic_s", "mx_uT", "my_uT", "mz_uT", "magnitude_uT", "wall_cloc
 
 import ast as _ast
 _ALLOWED = {"__future__", "csv", "json", "dataclasses", "datetime", "pathlib", "numpy", "bands"}
-# census's line arithmetic moved to uwtl on 2026-09-15. uwtl is its own repo and a normal pinned
-# dependency, not the monorepo, so census may import it -- and nothing else from outside.
-_ALLOWED_BY_FILE = {"census.py": _ALLOWED | {"uwtl"}}
 for _name in ("session.py", "census.py"):
     _tree = _ast.parse((HERE / _name).read_text())
     _mods = {(n.module or "").split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom)}
     _mods |= {a.name.split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.Import) for a in n.names}
     _rel = [n for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom) and n.level]
-    _ok_mods = _ALLOWED_BY_FILE.get(_name, _ALLOWED)
-    check(f"{_name} imports only stdlib, numpy, this repo's bands" + (" and uwtl" if "uwtl" in _ok_mods else ""),
-          _mods <= _ok_mods and not _rel,
-          str(sorted(_mods - _ok_mods)) + (" + relative imports" if _rel else ""))
+    check(f"{_name} imports only stdlib, numpy and this repo's bands", _mods <= _ALLOWED and not _rel,
+          str(sorted(_mods - _ALLOWED)) + (" + relative imports" if _rel else ""))
 # The app was cut back to a pure recorder on 2026-08-23: there is no on-phone export screen any
 # more, so there is no second CSV encoder to keep in step. The spool IS the export.
 check("the app has no export screen (the spool is the export)",
@@ -120,7 +115,8 @@ check("the app still builds the recorder half",
       all((HERE / "BiomimeticRadar" / f).exists() for f in
           ("Views/StreamView.swift", "Services/RecorderModel.swift", "Services/StreamController.swift",
            "Services/EnvironmentProbe.swift", "Models/SensorModels.swift")))
-check("serve.py port is readable by the gateway pattern", re.search(r"^DEFAULT_PORT = \d{4}$", (HERE / "serve.py").read_text(), re.M) is not None)
+check("serve.py port is readable by the gateway pattern",
+      re.search(r"^DEFAULT_PORT = \d{4}$", (HERE / "serve.py").read_text(), re.M) is not None)
 launch = json.loads((HERE / ".claude/launch.json").read_text())
 names = {c.get("name"): c for c in launch["configurations"]}
 check("launch.json has the project entry with autoPort", names.get(HERE.name, {}).get("autoPort") is True)
@@ -173,17 +169,26 @@ header_line, csv_text = file.split(b"\n", 1)
 header = json.loads(header_line)
 check("fixture header is one JSON line with the format tag", header.get("format") == serve.FORMAT)
 check("fixture CSV header is the raw.csv column set", csv_text.split(b"\n", 1)[0].decode() == serve.CSV_HEADER)
-check("fixture has the sample count its header claims", csv_text.count(b"\n") - 1 == header["sampleCount"], f"{csv_text.count(b'\\n') - 1} vs {header['sampleCount']}")
+rows = csv_text.count(b"\n") - 1
+check("fixture has the sample count its header claims", rows == header["sampleCount"], f"{rows} vs {header['sampleCount']}")
 import hashlib  # noqa: E402
 check("fixture sha256 matches its CSV", hashlib.sha256(csv_text).hexdigest() == header["sha256"])
 
 # ---------------------------------------------------------------- bands parsed out of Swift
 bands = serve.bands_from_swift()
 swift_bands = len(re.findall(r'Band\(id:\s*"', (HERE / "BiomimeticRadar/Processing/BandRegistry.swift").read_text()))
-check("api/bands parses every Band(...) in BandRegistry.swift", len(bands) == swift_bands and swift_bands >= 10, f"{len(bands)} vs {swift_bands}")
+check("api/bands parses every Band(...) in BandRegistry.swift", len(bands) == swift_bands and swift_bands >= 10,
+      f"{len(bands)} vs {swift_bands}")
 check("bands include schumann-1 and mains-60 with sane edges",
       any(b["id"] == "schumann-1" and b["lowHz"] < 7.83 < b["highHz"] for b in bands)
       and any(b["id"] == "mains-60" and b["lowHz"] < 60 < b["highHz"] for b in bands))
+import bands as _alias  # noqa: E402
+_m60 = next(b for b in _alias.BANDS if b.id == "mains-60")
+check("alias arithmetic: 97 Hz at 100 Hz lands on 3, 60 Hz at 64 Hz on 4, 150 Hz at 100 Hz on 50",
+      [_alias.alias_of(97, 100), _alias.alias_of(60, 64), _alias.alias_of(150, 100)] == [3, 4, 50])
+check("mains-60 folds to 4 Hz at a 64 Hz rate and is direct at 200 Hz",
+      (_alias.visibility(_m60, 64.0, 0.0).kind, _alias.visibility(_m60, 64.0, 0.0).apparent_centre_hz,
+       _alias.visibility(_m60, 200.0, 0.0).kind) == ("folded", 4.0, "direct"))
 
 
 # ---------------------------------------------------------------- interference registry parity
@@ -230,7 +235,8 @@ proc = subprocess.Popen([sys.executable, str(HERE / "serve.py"), str(port)], env
 base = f"http://127.0.0.1:{port}"
 for _ in range(50):
     try:
-        urllib.request.urlopen(base + "/api/status", timeout=1); break
+        urllib.request.urlopen(base + "/api/status", timeout=1)
+        break
     except Exception:
         time.sleep(0.1)
 try:
@@ -250,7 +256,9 @@ try:
                         break
         except Exception:
             pass
-    th = threading.Thread(target=listen, daemon=True); th.start(); time.sleep(0.3)
+    th = threading.Thread(target=listen, daemon=True)
+    th.start()
+    time.sleep(0.3)
 
     hdr = {"Content-Type": "application/x-fieldlab-chunk", "X-FieldLab-Compression": "deflate-raw"}
     status, body = http("POST", base + "/api/stream/chunk", fixture.read_bytes(), hdr)
@@ -265,8 +273,10 @@ try:
           Path(tmp, "abcd1234", "s1", "chunks", "000007.csv").read_text().startswith(serve.CSV_HEADER))
 
     # refusals
-    bad = bytearray(file); bad[-5] ^= 0x01
-    comp = zlib.compressobj(6, zlib.DEFLATED, -15); corrupted = comp.compress(bytes(bad)) + comp.flush()
+    bad = bytearray(file)
+    bad[-5] ^= 0x01
+    comp = zlib.compressobj(6, zlib.DEFLATED, -15)
+    corrupted = comp.compress(bytes(bad)) + comp.flush()
     status, body = http("POST", base + "/api/stream/chunk", corrupted, hdr)
     check("a chunk whose sha256 does not match its header is refused (422)", status == 422 and b"sha256" in body)
     wrong = dict(header, format="fieldlab-stream/99")
@@ -284,6 +294,32 @@ try:
     status, body = http("POST", base + "/api/stream/chunk", b"not deflate at all", hdr)
     check("garbage is refused (422), not a 500", status == 422)
 
+    def deflated(head, csv):
+        comp = zlib.compressobj(6, zlib.DEFLATED, -15)
+        return comp.compress(json.dumps(head).encode() + b"\n" + csv) + comp.flush()
+
+    stored = Path(tmp, "abcd1234", "s1", "chunks", "000007.csv")
+    before = stored.read_bytes()
+    other_csv = csv_text.replace(b"\n1000,", b"\n1000.5,", 1)
+    other = dict(header, sha256=hashlib.sha256(other_csv).hexdigest())
+    status, body = http("POST", base + "/api/stream/chunk", deflated(other, other_csv), hdr)
+    check("different bytes for a stored seq are refused (409) and the stored chunk is kept",
+          other_csv != csv_text and status == 409 and stored.read_bytes() == before, f"{status} {body[:80]!r}")
+    for field, value in (("sampleCount", None), ("startedAt", "yesterday")):
+        status, _ = http("POST", base + "/api/stream/chunk", deflated(dict(header, seq=8, **{field: value}), csv_text), hdr)
+        check(f"a header with a bad {field} is refused (422) rather than stored", status == 422, str(status))
+    status, _ = http("POST", base + "/api/stream/chunk", fixture.read_bytes(),
+                     {"Content-Type": "text/plain", "X-FieldLab-Compression": "deflate-raw"})
+    check("a POST a browser could send cross-site (text/plain) is refused (415)", status == 415, str(status))
+    status, _ = http("POST", base + "/api/stream/hello", b"{}")   # urllib sends it form-encoded
+    check("a form-encoded POST is refused (415)", status == 415, str(status))
+    rows = manifest.read_text()
+    manifest.write_text("")                      # as if the server died after writing the chunk file
+    status, body = http("POST", base + "/api/stream/chunk", fixture.read_bytes(), hdr)
+    check("a retry restores a manifest row that a crash lost", status == 200
+          and len(manifest.read_text().splitlines()) == 1 and json.loads(body).get("duplicate") is True)
+    manifest.write_text(rows)
+
     # simulated stream with a dropped chunk, jitter-free
     t0 = time.time() - 120
     for seq in range(12):
@@ -298,7 +334,8 @@ try:
     smp = json.loads(body)
     check("samples endpoint returns the 11 stored chunks' rows", smp["n"] == 11000 and smp["chunks"] == 11, f"n={smp['n']}")
     check("samples endpoint measures the rate from the timestamps", abs(smp["rateHz"] - 100) < 0.5)
-    check("the dropped chunk appears as ONE clock gap of ~10 s", len(smp["gaps"]) == 1 and 9.5 < smp["gaps"][0][1] - smp["gaps"][0][0] < 10.5, str(smp["gaps"]))
+    check("the dropped chunk appears as ONE clock gap of ~10 s",
+          len(smp["gaps"]) == 1 and 9.5 < smp["gaps"][0][1] - smp["gaps"][0][0] < 10.5, str(smp["gaps"]))
     status, body = http("GET", base + f"/api/samples?device=sim00001&from={t0 - 1}&to={t0 + 130}&step=100")
     check("step= bins the samples (11000 -> 110)", json.loads(body)["n"] == 110)
     status, body = http("GET", base + f"/api/samples?device=sim00001&from=0&to={time.time()}")
@@ -310,14 +347,18 @@ try:
     check("SSE delivered chunk events as they landed", len(events) >= 3, f"{len(events)} events")
 
     # hello
-    status, body = http("POST", base + "/api/stream/hello", json.dumps({"deviceID": "sim00001", "streamID": "sAAA", "deviceName": "x", "settings": {"chunkSeconds": 10}}).encode(), {"Content-Type": "application/json"})
-    check("hello is stored into stream.json", status == 200 and json.loads(Path(tmp, "sim00001", "sAAA", "stream.json").read_text()).get("settings", {}).get("chunkSeconds") == 10)
+    hello = {"deviceID": "sim00001", "streamID": "sAAA", "deviceName": "x", "settings": {"chunkSeconds": 10}}
+    status, body = http("POST", base + "/api/stream/hello", json.dumps(hello).encode(), {"Content-Type": "application/json"})
+    stored = json.loads(Path(tmp, "sim00001", "sAAA", "stream.json").read_text())
+    check("hello is stored into stream.json", status == 200 and stored.get("settings", {}).get("chunkSeconds") == 10)
 
     # URL surface
     status, _ = http("GET", base + "/streams/sim00001/sAAA/manifest.jsonl")
     check("the data folder is not on the URL surface (404)", status == 404)
     status, _ = http("GET", base + "/serve.py")
     check("the server's own source is not served", status == 404)
+    status, _ = http("GET", base + "/../CLAUDE.md")
+    check("a path that climbs out of web/ is not served", status == 404, str(status))
     status, body = http("GET", base + "/")
     check("the page is served at /", status == 200 and b"FieldLab" in body)
     status, body = http("GET", base + f"/{HERE.name}/api/status")
@@ -326,7 +367,8 @@ try:
     check("tools/design stylesheet is reachable (optional sibling)", status in (200, 404))
     # nothing here may be named after the gateway's private markers
     text = (HERE / "serve.py").read_text()
-    check("no route segment is named research/subjects/recordings", not re.search(r'"/api/[^"]*(research|subjects|recordings)', text))
+    check("no route segment is named research/subjects/recordings",
+          not re.search(r'"/api/[^"]*(research|subjects|recordings)', text))
 
 
     # -- the claim/device boundary -----------------------------------------------------------------
@@ -444,7 +486,6 @@ try:
     # the stream loader and the census, run on the scratch store the simulated phone just filled
     try:
         import numpy  # noqa: F401
-        import uwtl.spectral  # noqa: F401
         _have_np = True
     except ModuleNotFoundError as _e:
         _have_np = False
@@ -464,16 +505,6 @@ try:
         _share = sum(c.fraction for c in _c.components)
         check("census partitions the stream's AC variance (shares sum to 1)", abs(_share - 1.0) < 1e-6, f"{_share:.6f}")
         check("census reads THIS repo's band registry, not a copy", _cen.band_registry is _bands)
-        # bands.py stays stdlib-only (serve.py imports it without numpy or uwtl), so its alias and
-        # fold arithmetic is a MIRROR of uwtl.adequacy's, held equal here rather than trusted.
-        import uwtl.adequacy as _adq
-        _mism = [(b.id, r, tg) for b in _bands.BANDS for r in (25.0, 50.0, 64.0, 100.0, 101.42)
-                 for tg in (0.0, 8.3)
-                 if (lambda v, f: (v.kind, v.apparent_centre_hz, v.hz_from_target, v.note)
-                     != (f.kind, f.apparent_centre_hz, f.hz_from_target, f.note))(
-                     _bands.visibility(b, r, tg), _adq.fold(b.low_hz, b.high_hz, r, tg))]
-        check("bands.visibility equals uwtl.adequacy.fold for every band, rate and target", not _mism,
-              str(_mism[:3]))
 
     venv = HERE / "analysis/.venv/bin/python"
     if venv.exists() and (HERE / "analysis/run.py").exists():
@@ -483,7 +514,8 @@ try:
         ok = out.returncode == 0 and '"source": "stream"' in out.stdout
         check("run.py jitter --stream works end to end", ok, out.stderr[-300:] if not ok else "")
         # and the analyze job route drives it
-        status, body = http("POST", base + "/api/analyze", json.dumps({"command": "jitter", "device": "sim00001", "from": t0, "to": t0 + 130}).encode(), {"Content-Type": "application/json"})
+        job = {"command": "jitter", "device": "sim00001", "from": t0, "to": t0 + 130}
+        status, body = http("POST", base + "/api/analyze", json.dumps(job).encode(), {"Content-Type": "application/json"})
         job = json.loads(body)
         check("api/analyze starts a job", status == 200 and job.get("ok"), body[:200].decode())
         for _ in range(100):
@@ -491,7 +523,9 @@ try:
             if jobs and jobs[0]["state"] != "running":
                 break
             time.sleep(0.2)
-        check("the job finishes and carries run.py's output", jobs and jobs[0]["state"] == "done" and '"dropped_gaps": 1' in jobs[0]["output"], (jobs[0]["output"][-200:] if jobs else "no job"))
+        check("the job finishes and carries run.py's output",
+              jobs and jobs[0]["state"] == "done" and '"dropped_gaps": 1' in jobs[0]["output"],
+              (jobs[0]["output"][-200:] if jobs else "no job"))
     else:
         print("  SKIP  run.py / api/analyze job path — no analysis venv with run.py in this repo "
               "(the job runs a consumer's analysis; see serve.py _analysis_dir)")
@@ -517,14 +551,15 @@ check("store.py does not import serve.py (a reader must not need the server)",
 
 with tempfile.TemporaryDirectory() as _tmp:
     _dev, _st = "parity01", "sPARITY"
-    _chunks = Path(_tmp, _dev, _st, "chunks"); _chunks.mkdir(parents=True)
+    _chunks = Path(_tmp, _dev, _st, "chunks")
+    _chunks.mkdir(parents=True)
     _rows = []
     for seq in range(3):
         t0 = 1_700_000_000 + seq * 10
         lines = [serve.CSV_HEADER]
         for i in range(50):
             mono = 1000.0 + seq * 10 + i * 0.2
-            lines.append(",".join(["%f" % mono] + ["1.0"] * (serve.CSV_HEADER.count(",") )))
+            lines.append(",".join([f"{mono:f}"] + ["1.0"] * serve.CSV_HEADER.count(",")))
         (_chunks / f"{seq:06d}.csv").write_text("\n".join(lines) + "\n")
         _rows.append(json.dumps({"seq": seq, "startedAt": _iso_z(t0), "endedAt": _iso_z(t0 + 10),
                                  "firstMonotonic": 1000.0 + seq * 10, "sampleCount": 50}))

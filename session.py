@@ -293,7 +293,9 @@ def load_stream(device_dir: str | Path, start: datetime | float | None = None,
                 if first_wall is None:
                     first_wall = datetime.fromtimestamp(wall, tz=timezone.utc)
                 t.append(mono)
-                mx.append(float(rec["mx_uT"])); my.append(float(rec["my_uT"])); mz.append(float(rec["mz_uT"]))
+                mx.append(float(rec["mx_uT"]))
+                my.append(float(rec["my_uT"]))
+                mz.append(float(rec["mz_uT"]))
                 mag.append(float(rec["magnitude_uT"]))
                 rot.append((float(rec.get("gx_rads") or 0) ** 2 + float(rec.get("gy_rads") or 0) ** 2
                             + float(rec.get("gz_rads") or 0) ** 2) ** 0.5)
@@ -302,7 +304,8 @@ def load_stream(device_dir: str | Path, start: datetime | float | None = None,
                 for i, key in enumerate(("qx", "qy", "qz", "qw")):
                     quat[i].append(float(rec.get(key) or 0))
                 if rec.get("latitude"):
-                    lat.append(float(rec["latitude"])); lon.append(float(rec["longitude"]))
+                    lat.append(float(rec["latitude"]))
+                    lon.append(float(rec["longitude"]))
     if not t:
         raise FileNotFoundError(f"chunks exist but no samples fall between {start} and {end}")
     times = np.asarray(t, dtype=float)

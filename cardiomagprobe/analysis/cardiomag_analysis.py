@@ -3,10 +3,10 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Iterable
+from collections.abc import Iterable
 import numpy as np
 import pandas as pd
-from scipy import signal, stats
+from scipy import signal
 
 try:  # epoching, the circular-shift surrogate and the held-out template are cardiac-events'
     import cardiac_events as _ce
@@ -17,7 +17,7 @@ except ImportError as e:  # pragma: no cover - the message is the point
 
 AXES = ("mag_x_uT", "mag_y_uT", "mag_z_uT", "mag_magnitude_uT")
 
-@dataclass
+@dataclass(frozen=True)
 class Settings:
     pre: float = 0.5
     post: float = 0.5
@@ -28,6 +28,8 @@ class Settings:
     surrogates: int = 1000
     bootstraps: int = 1000
     seed: int = 0xCA4D10
+
+DEFAULT_SETTINGS = Settings()
 
 def load_session(folder: str | Path):
     folder = Path(folder)
@@ -58,7 +60,7 @@ def rms(x): return float(np.sqrt(np.mean(np.square(x))))
 def shifted_beats(beats, start, end, offset):
     return _ce.circular_shift(beats, start, end, offset)
 
-def analyze_axis(df, beats, axis, settings=Settings()):
+def analyze_axis(df, beats, axis, settings=DEFAULT_SETTINGS):
     rng = np.random.default_rng(settings.seed)
     t = df.monotonic_timestamp.to_numpy()
     dt = np.median(np.diff(t))
@@ -85,17 +87,17 @@ def coherence_with_beats(df, beats, axis):
     for beat in beats: impulses[np.argmin(np.abs(t - beat))] = 1
     return signal.coherence(impulses, df[axis].to_numpy(), fs=fs, nperseg=min(512, len(t)))
 
-def held_out_template(df, beats, axis="mag_x_uT", settings=Settings()):
+def held_out_template(df, beats, axis="mag_x_uT", settings=DEFAULT_SETTINGS):
     return _ce.held_out_template(df.monotonic_timestamp.to_numpy(), df[axis].to_numpy(), beats,
                                  settings.pre, settings.post, settings.baseline)
 
-def template_controls(df, beats, axis="mag_x_uT", settings=Settings()):
+def template_controls(df, beats, axis="mag_x_uT", settings=DEFAULT_SETTINGS):
     held=held_out_template(df,beats,axis,settings); template=held["template"]; test=held["test_mean"]
     shifted=shifted_beats(beats,df.monotonic_timestamp.iloc[0],df.monotonic_timestamp.iloc[-1],3.17)
     wrong=held_out_template(df,shifted,axis,settings)["test_mean"]
     return {"correct_r":held["correlation"],"time_reversed_r":float(np.corrcoef(template[::-1],test)[0,1]),"shifted_timing_r":float(np.corrcoef(template,wrong)[0,1])}
 
-def jitter_curve(df, beats, axis="mag_x_uT", levels=(0,5,10,25,50,100,250,500), settings=Settings()):
+def jitter_curve(df, beats, axis="mag_x_uT", levels=(0,5,10,25,50,100,250,500), settings=DEFAULT_SETTINGS):
     rng = np.random.default_rng(settings.seed); rows = []
     for ms in levels:
         jittered = beats + rng.uniform(-ms/1000, ms/1000, len(beats))
@@ -103,7 +105,7 @@ def jitter_curve(df, beats, axis="mag_x_uT", levels=(0,5,10,25,50,100,250,500), 
         rows.append({"jitter_ms": ms, "rms": result["rms"], "empirical_p": result["empirical_p"]})
     return pd.DataFrame(rows)
 
-def timing_surrogate_tests(df, beats, axis="mag_x_uT", settings=Settings()):
+def timing_surrogate_tests(df, beats, axis="mag_x_uT", settings=DEFAULT_SETTINGS):
     """Return real, shuffled-interval, and circular-shift null statistics."""
     rng = np.random.default_rng(settings.seed); t = df.monotonic_timestamp.to_numpy()
     def statistic(candidate):
@@ -127,7 +129,7 @@ def noise_characterization(df):
         report[axis]={"std_uT":float(np.std(x)),"quantization_step_uT":float(np.min(np.diff(unique))) if len(unique)>1 else None,"repeated_fraction":float(1-len(unique)/len(x)),"psd_frequency_hz":freq,"psd_uT2_hz":psd}
     return report
 
-def prior_level_comparison(df, beats, axis="mag_x_uT", settings=Settings()):
+def prior_level_comparison(df, beats, axis="mag_x_uT", settings=DEFAULT_SETTINGS):
     """Cross-validated operationalization of prior-information levels 0–4.
 
     Level 5 is evaluated across sessions by distance_comparison because spatial
@@ -148,7 +150,7 @@ def prior_level_comparison(df, beats, axis="mag_x_uT", settings=Settings()):
         {"level":4,"prior":"times + morphology + frozen XYZ choice","held_out_statistic":float(np.nanmax(held_axes))},
     ])
 
-def distance_comparison(session_folders: Iterable[str | Path], axis="mag_x_uT", settings=Settings()):
+def distance_comparison(session_folders: Iterable[str | Path], axis="mag_x_uT", settings=DEFAULT_SETTINGS):
     rows=[]
     for folder in session_folders:
         df,manifest=load_session(folder); distance=manifest.get("nominalDistanceCM"); beats=np.asarray(manifest["beatTimes"],float)
