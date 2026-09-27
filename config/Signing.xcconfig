@@ -1,0 +1,4 @@
+// Code signing for both apps. No team is committed: set yours in config/Local.xcconfig
+// (git-ignored; copy config/Local.xcconfig.example), or choose one in Xcode's Signing tab.
+DEVELOPMENT_TEAM =
+#include? "Local.xcconfig"

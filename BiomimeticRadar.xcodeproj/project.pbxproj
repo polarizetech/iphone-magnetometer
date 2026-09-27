@@ -77,6 +77,7 @@
 		F1F266A38FA9CD3A5883B9F4 /* GoldenSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldenSessionTests.swift; sourceTree = "<group>"; };
 		F9054904AF542409B6F2A3C3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
 		F9685A5FB2C012DE6D5495F0 /* BiomimeticRadarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomimeticRadarApp.swift; sourceTree = "<group>"; };
+		5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Signing.xcconfig; path = config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
 /* End PBXFileReference section */
 
 /* Begin PBXGroup section */
@@ -93,6 +94,7 @@
 		122A3593776F86FC3114CA66 = {
 			isa = PBXGroup;
 			children = (
+				5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */,
 				C66241B3E70BEC7927E01762 /* BiomimeticRadar */,
 				95B858FE2FC2999B94615DF2 /* BiomimeticRadarTests */,
 				6D3E8C21EE39744A2ABA542E /* Products */,
@@ -246,10 +248,8 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					01A0100767D0D48E92F70BA3 = {
-						DevelopmentTeam = YOURTEAMID;
 					};
 					EB3149516039EC2C6AAA3FE3 = {
-						DevelopmentTeam = YOURTEAMID;
 					};
 				};
 			};
@@ -361,6 +361,7 @@
 		};
 		3EFE7F6AD4EA64C7F2E6F32E /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -394,7 +395,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = dwarf;
-				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				ENABLE_TESTABILITY = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;
@@ -473,6 +473,7 @@
 		};
 		E07A25D5AB9411A2B756F640 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
 				CLANG_ANALYZER_NONNULL = YES;
@@ -506,7 +507,6 @@
 				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
 				COPY_PHASE_STRIP = NO;
 				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
-				DEVELOPMENT_TEAM = YOURTEAMID;
 				ENABLE_NS_ASSERTIONS = NO;
 				ENABLE_STRICT_OBJC_MSGSEND = YES;
 				GCC_C_LANGUAGE_STANDARD = gnu11;

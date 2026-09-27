@@ -18,5 +18,7 @@
 	<string>1.0</string>
 	<key>CFBundleVersion</key>
 	<string>1</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Fingertip camera timing (PPG) marks each heartbeat so the magnetometer can be averaged on it. Video is analysed on the phone and never saved.</string>
 </dict>
 </plist>

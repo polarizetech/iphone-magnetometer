@@ -3,13 +3,15 @@ options:
   bundleIdPrefix: com.biomimeticradar
   deploymentTarget:
     iOS: "17.0"
+# The signing team comes from config/Local.xcconfig (git-ignored), through config/Signing.xcconfig.
+# It used to be written here, and before that only in the pbxproj, where `xcodegen generate` dropped it
+# (2026-09-23). An xcconfig survives generation and keeps anyone's team out of the repo.
+configFiles:
+  Debug: config/Signing.xcconfig
+  Release: config/Signing.xcconfig
 settings:
   base:
     SWIFT_VERSION: "5.9"
-    # The team was only ever in the generated pbxproj, so `xcodegen generate` silently removed it
-    # and the next device build failed on signing (2026-09-23). It belongs here, where generation
-    # cannot drop it. Someone else building this replaces it with their own.
-    DEVELOPMENT_TEAM: ""
 targets:
   BiomimeticRadar:
     type: application
