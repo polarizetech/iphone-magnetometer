@@ -1,0 +1,9 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Tag an experiment milestone (annotated, dated) and post its receipt to the PR. Use this, never bare `git tag`.
+# Signs the tag when git is set up to sign tags (tag.gpgSign), which makes it tamper-evident.
+# usage: .agents/tools/tag <tag> "<message>"
+set -euo pipefail
+[ $# -eq 2 ] || { echo "usage: $0 <tag> \"<message>\"" >&2; exit 2; }
+git tag -a "$1" -m "$(date +%F) $2"
+"$(dirname "$0")/prereg-receipt" "$1"

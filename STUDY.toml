@@ -1,0 +1,28 @@
+kind = "study"
+name = "iphone-magnetometer"
+question = "Can a stock iPhone's magnetometer, with coherent processing, recover a coded or physiological magnetic signal below its instantaneous noise floor?"
+stage = "PROBE"                  # the gates produce numbers that are quoted in the corpus
+visibility = "public"            # decided 2026-09-25; the repo flips once its history is cleaned (CLAUDE.md)
+visibility_decided = "2026-09-25"
+profile = "polarizetech"
+
+[corpus]
+project = "bioem-propagation"
+claim_prefix = "BEM"
+
+# Adopted in place (scientific-research-scaffold ADOPTING.md): nothing was moved, so each app gives
+# its `path`. Both are native iOS apps; FieldLab's index.html is its web viewer under web/.
+
+[[apps]]
+version = "v1"
+slug = "fieldlab"
+question = "Can the phone record a continuous, gated magnetometer stream and say which lines in it are real?"
+path = "."                       # BiomimeticRadar/ (iOS), serve.py + web/ (server and viewer)
+status = "active"
+
+[[apps]]
+version = "v2"
+slug = "cardiomag-probe"
+question = "Is there a heartbeat-locked magnetometer component at chest distances?"
+path = "cardiomagprobe"
+status = "active"

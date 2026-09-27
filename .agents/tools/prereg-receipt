@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# Post a tag receipt to the current branch's PR. The comment's timestamp comes from GitHub, not this machine,
+# so it is independent evidence that the tagged plan existed by then (not that nothing ran before it).
+# usage: .agents/tools/prereg-receipt <tag>
+set -euo pipefail
+[ $# -eq 1 ] || { echo "usage: $0 <tag>" >&2; exit 2; }
+tag="$1"
+commit=$(git rev-parse "$tag^{commit}")
+tagdate=$(git for-each-ref --format='%(taggerdate:iso-strict)' "refs/tags/$tag")
+
+# The EID is the tag minus its milestone suffix. EIDs contain hyphens (E01-stentor-map), so cutting at the first
+# hyphen would hash experiments/E01/... and post n/a. A tag with no milestone suffix (model-v0.1.0) has no EID.
+case "$tag" in
+  *-prereg) eid="${tag%-prereg}" ;;
+  *-run) eid="${tag%-run}" ;;
+  *-closed) eid="${tag%-closed}" ;;
+  *-interim-[0-9]*) eid="${tag%-interim-*}" ;;
+  *) eid="" ;;
+esac
+
+sha256_stdin() { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi | cut -c1-64; }
+# Hash each file as committed at the tag, not the working tree, so a receipt posted late still describes what was tagged.
+file_sha_at_tag() {
+  if [ -n "$eid" ] && git cat-file -e "$commit:$1" 2>/dev/null; then git show "$commit:$1" | sha256_stdin; else echo "n/a"; fi
+}
+
+body=$(cat <<MSG
+<!-- prereg-receipt v1 tag=$tag commit=$commit -->
+**Tag receipt** \`$tag\`
+- commit: \`$commit\`
+- tagged: $tagdate
+- experiment: ${eid:-none (not an experiment milestone tag)}
+- PREREG.md sha256 at the tag: \`$(file_sha_at_tag "experiments/$eid/PREREG.md")\`
+- ENV.lock sha256 at the tag: \`$(file_sha_at_tag "experiments/$eid/ENV.lock")\`
+MSG
+)
+
+# gh often lives outside the PATH hooks and agents get; look in the usual install locations too.
+gh=$(command -v gh 2>/dev/null || true)
+for c in "$HOME/.local/bin/gh" /opt/homebrew/bin/gh /usr/local/bin/gh /home/linuxbrew/.linuxbrew/bin/gh; do
+  [ -n "$gh" ] && break
+  [ -x "$c" ] && gh="$c"
+done
+[ -n "$gh" ] || { echo "prereg-receipt: gh not found (PATH or the usual install locations); receipt not posted" >&2; exit 0; }
+if ! err=$("$gh" pr comment --body "$body" 2>&1 >/dev/null); then
+  case "$err" in
+    *"no pull requests found"*) echo "prereg-receipt: no PR for this branch yet; re-run after gh pr create" >&2 ;;
+    *) echo "prereg-receipt: posting failed: $err" >&2 ;;
+  esac
+fi

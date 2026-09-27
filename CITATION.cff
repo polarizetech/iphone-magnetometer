@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use this software or its recordings, please cite it as below. No release has been made yet."
+title: "iphone-magnetometer: FieldLab, a stock-iPhone magnetometer recorder and test platform"
+abstract: >-
+  Can a stock iPhone's magnetometer, with coherent processing, recover a coded or physiological magnetic
+  signal below its instantaneous noise floor? FieldLab records the raw magnetometer with its timing, motion
+  and quality gates, streams it to a small server, and draws what arrived. CardioMag Probe asks the cardiac
+  version of the question directly.
+type: software
+authors:
+  - family-names: Anderton
+    given-names: Joshua
+    orcid: "https://orcid.org/0009-0004-0741-6962"
+license:
+  - MIT
+  - CC-BY-4.0
+repository-code: "https://github.com/polarizetech/iphone-magnetometer"
+keywords:
+  - magnetometer
+  - iPhone
+  - Core Motion
+  - lock-in detection
+  - magnetocardiography
+  - preregistration

@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: MIT
+# One line of context for the agent: which experiment branch this is and whether PREREG.md is frozen.
+b=$(git symbolic-ref --short HEAD 2>/dev/null) || exit 0
+case "$b" in experiment/*) eid="${b#experiment/}";; *) exit 0;; esac
+s=""
+for t in prereg run closed; do
+  git rev-parse -q --verify "refs/tags/${eid}-$t" >/dev/null && s="$s $t"
+done
+n=$(git tag -l "${eid}-interim-*" | wc -l | tr -d ' ')
+[ "$n" != 0 ] && s="$s interim×$n"
+echo "[prereg] branch=$b eid=$eid tags:${s:- none}. PREREG.md is $( [[ $s == *prereg* ]] && echo FROZEN || echo editable )."

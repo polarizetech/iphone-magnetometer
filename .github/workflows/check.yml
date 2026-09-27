@@ -1,0 +1,34 @@
+name: check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      # The protocol checker, polarizetech/scientific-research-scaffold (SCAFFOLD_TOKEN, if set, reads a
+      # private copy). If it cannot be read, the scaffold check is skipped with a warning and the rest
+      # of `make check` still runs.
+      - id: scaffold
+        continue-on-error: true
+        uses: actions/checkout@v4
+        with:
+          repository: polarizetech/scientific-research-scaffold
+          ref: main
+          path: .scaffold
+          token: ${{ secrets.SCAFFOLD_TOKEN || github.token }}
+      - uses: astral-sh/setup-uv@v6
+      - run: uv sync --frozen
+      - if: steps.scaffold.outcome == 'success'
+        run: make check SCAFFOLD="python3 .scaffold/bin/scaffold"
+      - if: steps.scaffold.outcome != 'success'
+        run: |
+          echo "::warning::scientific-research-scaffold not readable (set SCAFFOLD_TOKEN); scaffold check skipped"
+          make lint test

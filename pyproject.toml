@@ -1,0 +1,33 @@
+[project]
+name = "iphone-magnetometer"
+version = "0.0.0"
+description = "Can a stock iPhone's magnetometer, with coherent processing, recover a coded or physiological magnetic signal below its instantaneous noise floor?"
+# The server and the gate run on the system python3 (3.9 on macOS) with the standard library only.
+requires-python = ">=3.9"
+dependencies = []
+
+[dependency-groups]
+# What CI installs. The analysis libraries in README's "Built on" table are not listed: they are not
+# published, and every script that needs one raises with the install line.
+dev = ["numpy>=1.24", "ruff>=0.6"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 130
+target-version = "py39"
+
+[tool.ruff.lint]
+# The rule set of polarizetech/adaptive-preregistration.
+select = ["E", "F", "W", "B", "UP"]
+ignore = [
+  "E401",   # one-line stdlib imports are the house style
+  "UP015",  # explicit open() modes are kept for readability
+]
+
+[tool.ruff.lint.per-file-ignores]
+# dev_check.py imports each module under test at the point its checks begin.
+"dev_check.py" = ["E402"]
+# Carried in from the monorepo in the compact one-statement-per-line-optional style it was written in.
+"cardiomagprobe/analysis/*.py" = ["E501", "E701", "E702"]

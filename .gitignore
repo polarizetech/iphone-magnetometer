@@ -24,3 +24,14 @@ streams/
 # ADVIO is CC-BY-NC-4.0, so re-hosting it here would republish someone else's data under this
 # repo's terms. Re-fetch is a byte-range read of well under 1% of each archive.
 data/
+
+# uv and ruff
+.venv/
+.ruff_cache/
+# swift test
+.build/
+# CI's checkout of the protocol checker
+.scaffold/
+
+# Your own signing team (config/Local.xcconfig.example)
+config/Local.xcconfig
