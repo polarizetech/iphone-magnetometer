@@ -1,5 +1,30 @@
 # Changelog — FieldLab (biomimetic-radar)
 
+## 2026-09-25 — ready to publish: audit, lint, study protocol
+
+Prepared for a public repo. **Needs an app build on the phone** for the Swift changes below.
+
+- **Server.** A request path could climb out of `web/` (`/../../etc/hosts` was served). A chunk
+  arriving with a stored seq but different bytes now gets **409** and the stored copy is kept; it
+  used to overwrite the only copy. A retry now restores a manifest row lost to a crash between writing
+  the chunk and logging it. Headers without a valid `sampleCount`, `startedAt` or `endedAt` are refused;
+  one such row used to break `/api/status`. POSTs must be JSON or the chunk type, which stops any web
+  page from writing to the store. The dashboard escapes every value that comes from the phone.
+- **FieldLab.** A spool file is deleted only on the server's own `ok` ack, not on any 2xx. GPS stops,
+  and the last fix is dropped, when no running measurement asked for it; it used to keep tagging
+  samples after "Record GPS" was switched off. Saved settings missing a newer field keep their other
+  values; they used to reset every setting, server URL included. The default server URL is now a
+  placeholder.
+- **CardioMag Probe** had no camera usage string, so iOS terminated it on Start with PPG on.
+- **No `uwtl`.** census's line arithmetic is back in `census.py`, unchanged from before 2026-09-15.
+- **Signing** comes from a git-ignored `config/Local.xcconfig`; no team ID is committed.
+- **Private data removed** from the working tree: GPS in the golden fixture and the tailnet host.
+  Both are still in the history before this entry.
+- **Lint.** ruff (the kit's rules) and swift-format, both clean, in `make check`. The three Swift
+  files the Python reads with regexes are excluded from formatting.
+- **Study protocol** adopted in place: `STUDY.toml`, `RESEARCH.md`, `EXPERIMENTS.md`, the
+  adaptive-preregistration kit in `.agents/`, MIT + CC BY 4.0, `CITATION.cff`, CI.
+
 ## 2026-09-16 — a changed sample rate was silently ignored, and the chunks said otherwise
 
 The first 64 Hz run (stream `e0b6f279`) delivered **101.32–101.46 Hz** for 14 minutes. The Stream

@@ -1,3 +1,5 @@
+@AGENTS.md
+
 # CLAUDE.md — `iphone-magnetometer`
 
 **Renamed from `fieldlab-recorder` on 2026-09-15** (repo, monorepo submodule path, and gateway
@@ -13,7 +15,16 @@ store, and the web dashboard over it. Wiring a consumer in → the API list at t
 [`serve.py`](serve.py).
 
 Run: `python3 serve.py 8212`.
-Tests: `FIELDLAB_STREAMS=$(mktemp -d) python3 dev_check.py` (**94/94** standalone).
+Tests: `make check` (protocol check, ruff, swift-format, and `dev_check.py` against a scratch store;
+**102/102** standalone on the system Python 3.9). `make swift-test` runs the 70 XCTests.
+
+**Kind:** a **study** under the [study protocol](https://github.com/polarizetech/scientific-research-scaffold/blob/main/PROTOCOL.md)
+(`STUDY.toml`, stage PROBE), adopted 2026-09-25. New experiments use the kit (`AGENTS.md`,
+`EXPERIMENTS.md`). **Visibility: public, decided 2026-09-25**; flip it only after the history is
+cleaned (earlier commits hold GPS in the golden fixture and the tailnet hostname).
+
+**Lint:** `BandRegistry.swift`, `InterferenceRegistry.swift` and `StreamChunk.swift` are read by
+Python regexes, so they carry `swift-format-ignore-file`. Reformatting them empties `/api/bands`.
 
 ## ⚠ THIS IS ITS OWN REPO (`polarizetech/iphone-magnetometer`, extracted 2026-08-31)
 
@@ -28,9 +39,8 @@ nothing from the monorepo.** Everything monorepo-side they touch is optional and
 announced rather than passed over — `dev_check.py` prints four `SKIP` lines standalone and they
 name what is missing.
 
-**The ANALYSIS is a different matter, and [`README.md`](README.md)'s *Built on* table is the
-list** — `uwtl`, `biosig`, `cardiac-events`, `injrec`, `dataset-fetch`, `elf-stations`. Those are
-shared libraries this instrument genuinely depends on, each **raising with the install line or the
+**Some ANALYSIS is a different matter**: CardioMag's `cardiac-events` and `injrec`, and the
+consumer's `biosig`, `dataset-fetch` and `elf-stations`. Those are unpublished shared libraries, each **raising with the install line or the
 path it looked for** rather than degrading, because a sweep that silently skips its own source
 model is worse than one that will not start. The recording path stays clean: none of them is needed
 to capture, spool, upload or view a stream.
@@ -55,11 +65,10 @@ same reason those do: **the thing that writes a format and the thing that reads 
 and three separate folders were already reaching across the monorepo for them.
 
 - **They import only the standard library, numpy and this repo's `bands`**, asserted by AST in
-  `dev_check.py`, so the repo still imports nothing from the monorepo. **One exception since
-  2026-09-15: `census` imports `uwtl.spectral`**, where its line arithmetic now lives. uwtl is its own
-  repo and a pinned dependency (>= 0.2.1), not the monorepo. `bands.py` stays stdlib-only because
-  `serve.py` loads it without numpy; its alias arithmetic mirrors `uwtl.adequacy.fold`, and the gate
-  asserts they agree.
+  `dev_check.py`, so the repo still imports nothing from the monorepo. **`uwtl` is not a dependency
+  (2026-09-25).** Its `spectral` module is census's own line arithmetic, moved out on 2026-09-15 and
+  moved back unchanged, because uwtl is proprietary and this repo is public. `bands.py` stays
+  stdlib-only because `serve.py` loads it without numpy.
 - **The wire-format parity check stopped being skippable.** It used to depend on a consumer being on
   the path; it now reads this repo's own `session.py`, so it runs standalone too.
 - `dev_check.py` also loads the simulated phone's scratch store with `session.load_stream` and runs a
@@ -82,8 +91,7 @@ prior/injection ladders, site survey, body signals, hard-iron calibration) and d
 
 **Source only; no build output and no history** — the origin had committed ~9,830 Xcode build
 files, and carrying its history would have put them in this repo forever. **`calibrate`,
-`bodysignals` and `site_survey` run standalone** since `session` and `census` moved in (below),
-given `uwtl` >= 0.2.1 installed.
+`bodysignals` and `site_survey` run standalone** since `session` and `census` moved in (below).
 **`ladder2`, `prior_ladder` and `injection_sweep` are the one remaining tie**: they plant synthetic
 cardiac sources with `injrec` from the monorepo's `tools/injection-recovery`, and raise with that
 reason when run outside it. **`synthetic_validation.py` was removed 2026-09-15**: it swept its own
