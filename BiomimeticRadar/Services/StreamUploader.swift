@@ -25,21 +25,32 @@ final class StreamUploader: NSObject, ObservableObject {
     @Published private(set) var lastAck: Date?
     @Published private(set) var lastError: String?
     @Published private(set) var lastServerMessage: String?
-    /// Whether cellular/expensive paths are allowed. Read at session creation; a change takes
-    /// effect when the session is rebuilt (`rebuildSession`).
+    /// Whether cellular, expensive and constrained paths are allowed. Set on each request, so a change
+    /// applies to the next upload without a new session.
     var allowsCellular = false
+    /// At most this many uploads are handed to the system at once; the next sweep sends the rest.
+    /// Without it a server that was down had the whole backlog re-queued every 30 s.
+    static let maxInFlight = 16
 
     /// Called on the main actor when the server has acknowledged a spool file (2xx). The spool
     /// deletes the file; the uploader never deletes anything itself.
     var onAcknowledged: ((URL, StreamAck?) -> Void)?
     /// Called when a file's upload failed. The file stays in the spool for the next sweep.
     var onFailed: ((URL, String) -> Void)?
+    /// Called once the in-flight set is restored, which is when uploads may start. Set after the
+    /// restore finished (a background launch can create the uploader first), it runs at once.
+    var onReady: (() -> Void)? {
+        didSet { if restored { onReady?() } }
+    }
 
     private var session: URLSession!
     /// Filled on the session's delegate queue and read there on completion, so the body is always
     /// complete before `completed` runs. Two separate main-actor hops could arrive in either order.
     private nonisolated let responseBodies = ResponseBodies()
     private var backgroundCompletion: (() -> Void)?
+    /// False until the tasks the system is still carrying are known. A sweep before then would send
+    /// every one of them a second time.
+    private var restored = false
 
     private override init() {
         super.init()
@@ -47,7 +58,11 @@ final class StreamUploader: NSObject, ObservableObject {
         // Rebuild the in-flight set from whatever the system is still carrying for us.
         session.getAllTasks { [weak self] tasks in
             let names = tasks.compactMap(\.taskDescription)
-            Task { @MainActor in self?.inFlight = Set(names) }
+            Task { @MainActor in
+                self?.inFlight = Set(names)
+                self?.restored = true
+                self?.onReady?()
+            }
         }
     }
 
@@ -56,24 +71,25 @@ final class StreamUploader: NSObject, ObservableObject {
         config.isDiscretionary = false
         config.sessionSendsLaunchEvents = true
         config.waitsForConnectivity = true
-        config.allowsCellularAccess = allowsCellular
-        config.allowsExpensiveNetworkAccess = allowsCellular
-        config.allowsConstrainedNetworkAccess = allowsCellular
+        // The session allows every path and each request narrows it (`enqueue`). Rebuilding the
+        // session to change this created a second session with the same identifier while the first
+        // was still finishing, which the system does not allow, and its tasks never reported back.
+        config.allowsCellularAccess = true
+        config.allowsExpensiveNetworkAccess = true
+        config.allowsConstrainedNetworkAccess = true
         config.timeoutIntervalForResource = 6 * 3600
         return URLSession(configuration: config, delegate: self, delegateQueue: nil)
     }
 
-    /// Apply a changed `allowsCellular`. Tasks already in flight keep their old session.
-    func rebuildSession() {
-        session.finishTasksAndInvalidate()
-        session = makeSession()
-    }
-
-    /// Hand one spool file to the system. Idempotent: a file already in flight is not re-sent.
+    /// Hand one spool file to the system. Idempotent: a file already in flight is not re-sent, and
+    /// nothing is sent until the in-flight set is restored or while `maxInFlight` are outstanding.
     func enqueue(file: URL, to endpoint: URL) {
         let name = file.lastPathComponent
-        guard !inFlight.contains(name) else { return }
+        guard restored, !inFlight.contains(name), inFlight.count < Self.maxInFlight else { return }
         var request = URLRequest(url: endpoint)
+        request.allowsCellularAccess = allowsCellular
+        request.allowsExpensiveNetworkAccess = allowsCellular
+        request.allowsConstrainedNetworkAccess = allowsCellular
         request.httpMethod = "POST"
         request.setValue(StreamChunk.contentType, forHTTPHeaderField: "Content-Type")
         request.setValue(StreamChunk.formatVersion, forHTTPHeaderField: "X-FieldLab-Format")

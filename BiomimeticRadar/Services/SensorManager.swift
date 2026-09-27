@@ -78,13 +78,18 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
         if isRunning {
             owners.insert(owner)
             setLocation(includeLocation, for: owner)
-            guard abs(configuredRateHz - wanted) > 0.01 else { return nil }
-            if owner != .preview && owners.subtracting([owner, .preview]).isEmpty {
+            let rateDiffers = abs(configuredRateHz - wanted) > 0.01
+            // Over the preview alone, a measurement's rate AND its attitude choice win. Keeping the
+            // preview's gyro left "mag only" streams paying for the gyro they had switched off.
+            if owner != .preview && owners.subtracting([owner, .preview]).isEmpty
+                && (rateDiffers || attitude != attitudeEnabled)
+            {
                 motion.stopMagnetometerUpdates()
                 motion.stopDeviceMotionUpdates()
-                configure(rate: wanted, attitude: attitude || attitudeEnabled)
+                configure(rate: wanted, attitude: attitude)
                 return nil
             }
+            guard rateDiffers else { return nil }
             return String(
                 format: "Sensor already running at %.0f Hz for %@; kept that rate", configuredRateHz,
                 owners.subtracting([owner]).map(\.rawValue).joined(separator: ", "))
@@ -135,6 +140,12 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
     func stop(owner: Owner = .experiment) {
         owners.remove(owner)
         setLocation(false, for: owner)
+        if owners == [.preview] && !attitudeEnabled {
+            // The measurement had the gyro off; the preview's gates read attitude, so give it back.
+            motion.stopMagnetometerUpdates()
+            configure(rate: configuredRateHz, attitude: true)
+            return
+        }
         guard owners.isEmpty else { return }
         motion.stopMagnetometerUpdates()
         motion.stopDeviceMotionUpdates()

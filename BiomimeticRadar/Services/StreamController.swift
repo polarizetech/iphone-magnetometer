@@ -101,14 +101,20 @@ final class StreamController: ObservableObject {
         }
         wasInterrupted = defaults.bool(forKey: Self.runningKey)
         uploader.allowsCellular = !settings.wifiOnly
-        uploader.onAcknowledged = { [weak self] file, ack in self?.acknowledged(file, ack) }
+        // Each ack frees a slot (`StreamUploader.maxInFlight`), so the backlog keeps moving when no
+        // stream is running and the 30 s sweep timer is off.
+        uploader.onAcknowledged = { [weak self] file, ack in
+            self?.acknowledged(file, ack)
+            self?.sweep()
+        }
+        uploader.onReady = { [weak self] in self?.sweep() }
         uploader.onFailed = { [weak self] _, reason in self?.message = "Upload failed: \(reason) — will retry" }
         keepAlive.onStatus = { [weak self] text in self?.keepAliveStatus = text }
         UIDevice.current.isBatteryMonitoringEnabled = true
         batteryLevel = UIDevice.current.batteryLevel
         refreshSpool()
-        // Leftovers from a previous run go first, whatever the state of the sensor.
-        sweep()
+        // Leftovers from a previous run go first, whatever the state of the sensor: `onReady` sweeps
+        // as soon as the uploader knows what the system is still carrying.
     }
 
     // MARK: - control
@@ -179,7 +185,6 @@ final class StreamController: ObservableObject {
 
     func applyNetworkPolicy() {
         uploader.allowsCellular = !settings.wifiOnly
-        uploader.rebuildSession()
     }
 
     /// Operator action, never automatic: drop every spool file. Exists because a stream pointed at a
