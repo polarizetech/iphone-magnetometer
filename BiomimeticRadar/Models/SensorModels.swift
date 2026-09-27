@@ -33,9 +33,10 @@ struct Quaternion: Codable, Sendable, Equatable {
         let iy = w * vector.y + z * vector.x - x * vector.z
         let iz = w * vector.z + x * vector.y - y * vector.x
         let iw = -x * vector.x - y * vector.y - z * vector.z
-        return Vector3(x: ix * w + iw * -x + iy * -z - iz * -y,
-                       y: iy * w + iw * -y + iz * -x - ix * -z,
-                       z: iz * w + iw * -z + ix * -y - iy * -x)
+        return Vector3(
+            x: ix * w + iw * -x + iy * -z - iz * -y,
+            y: iy * w + iw * -y + iz * -x - ix * -z,
+            z: iz * w + iw * -z + ix * -y - iy * -x)
     }
 }
 
@@ -51,13 +52,21 @@ struct SensorSample: Codable, Sendable, Identifiable {
     let latitude: Double?
     let longitude: Double?
 
-    init(id: UUID = UUID(), monotonicTime: Double, wallTime: Date, magnetic: Vector3,
-         acceleration: Vector3 = .zero, rotationRate: Vector3 = .zero,
-         attitude: Quaternion = .identity, orientation: String = "unknown",
-         latitude: Double? = nil, longitude: Double? = nil) {
-        self.id = id; self.monotonicTime = monotonicTime; self.wallTime = wallTime
-        self.magnetic = magnetic; self.acceleration = acceleration; self.rotationRate = rotationRate
-        self.attitude = attitude; self.orientation = orientation
-        self.latitude = latitude; self.longitude = longitude
+    init(
+        id: UUID = UUID(), monotonicTime: Double, wallTime: Date, magnetic: Vector3,
+        acceleration: Vector3 = .zero, rotationRate: Vector3 = .zero,
+        attitude: Quaternion = .identity, orientation: String = "unknown",
+        latitude: Double? = nil, longitude: Double? = nil
+    ) {
+        self.id = id
+        self.monotonicTime = monotonicTime
+        self.wallTime = wallTime
+        self.magnetic = magnetic
+        self.acceleration = acceleration
+        self.rotationRate = rotationRate
+        self.attitude = attitude
+        self.orientation = orientation
+        self.latitude = latitude
+        self.longitude = longitude
     }
 }

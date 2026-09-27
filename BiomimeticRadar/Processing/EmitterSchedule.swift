@@ -36,8 +36,10 @@ struct EmitterSchedule: Codable, Sendable, Equatable {
         var note: String {
             switch self {
             case .none: "No emission. Any detection is of something external — which is the experiment."
-            case .haptics: "A coil driving a mass beside a magnet, centimetres from the magnetometer. The strongest control available, and audible and palpable while it runs."
-            case .cpuLoad: "Duty-cycled processor load modulates PMIC current, which has a field. Silent, weakest but least intrusive, and it warms the device — which drifts the sensor."
+            case .haptics:
+                "A coil driving a mass beside a magnet, centimetres from the magnetometer. The strongest control available, and audible and palpable while it runs."
+            case .cpuLoad:
+                "Duty-cycled processor load modulates PMIC current, which has a field. Silent, weakest but least intrusive, and it warms the device — which drifts the sensor."
             case .screenBrightness: "Backlight current. Weak, and visible to the operator, so it cannot be used blind."
             }
         }
@@ -45,7 +47,8 @@ struct EmitterSchedule: Codable, Sendable, Equatable {
 
     /// The single fact this whole file exists to protect. Stamped into metadata and rendered in the UI.
     static let stamp = "EMITTER-ON"
-    static let firewall = "A session recorded with the emitter running measures this phone, not the world. It can validate the detector and it can never support a claim about an external signal."
+    static let firewall =
+        "A session recorded with the emitter running measures this phone, not the world. It can validate the detector and it can never support a claim about an external signal."
 
     /// Where the emission comes from. A phone transducer is millimetres from the sensor with an
     /// unknown field in tesla — good for proving the detector works, useless for calibrating
@@ -115,7 +118,7 @@ struct EmitterSchedule: Codable, Sendable, Equatable {
         let period = 1 / carrierHz
         let count = Int(duration / period)
         return (0..<count).map { index in
-            let time = (Double(index) + 0.25) * period          // the carrier's positive peak
+            let time = (Double(index) + 0.25) * period  // the carrier's positive peak
             return (time, unipolarDrive(at: time))
         }
     }

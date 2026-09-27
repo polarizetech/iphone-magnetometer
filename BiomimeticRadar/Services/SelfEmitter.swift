@@ -71,16 +71,19 @@ final class SelfEmitter: ObservableObject {
 
             let pulses = schedule.pulses(duration: duration)
             let events = pulses.map { pulse in
-                CHHapticEvent(eventType: .hapticTransient, parameters: [
-                    CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(pulse.intensity)),
-                    CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.8),
-                ], relativeTime: pulse.time)
+                CHHapticEvent(
+                    eventType: .hapticTransient,
+                    parameters: [
+                        CHHapticEventParameter(parameterID: .hapticIntensity, value: Float(pulse.intensity)),
+                        CHHapticEventParameter(parameterID: .hapticSharpness, value: 0.8),
+                    ], relativeTime: pulse.time)
             }
             let pattern = try CHHapticPattern(events: events, parameters: [])
             player = try engine.makePlayer(with: pattern)
             try player?.start(atTime: CHHapticTimeImmediate)
-            status = String(format: "Haptics: %d pulses at %.2f Hz for %.0f s", events.count,
-                            schedule.carrierHz, duration)
+            status = String(
+                format: "Haptics: %d pulses at %.2f Hz for %.0f s", events.count,
+                schedule.carrierHz, duration)
         } catch {
             status = "Haptic engine failed: \(error.localizedDescription)"
             isRunning = false
@@ -93,7 +96,7 @@ final class SelfEmitter: ObservableObject {
         status = String(format: "CPU load modulated at %.2f Hz for %.0f s", schedule.carrierHz, duration)
         loadTask = Task.detached(priority: .userInitiated) {
             let start = Date()
-            let slice = 1.0 / (schedule.carrierHz * 16)      // 16 steps per carrier cycle
+            let slice = 1.0 / (schedule.carrierHz * 16)  // 16 steps per carrier cycle
             while !Task.isCancelled, Date().timeIntervalSince(start) < duration {
                 let t = Date().timeIntervalSince(start)
                 let duty = schedule.unipolarDrive(at: t)

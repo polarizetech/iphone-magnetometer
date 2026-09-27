@@ -19,10 +19,10 @@ import Foundation
 /// session-level report (`postRecord`, which needs an `ExperimentProtocol`) lives in
 /// `QualityGatesSession.swift` and is Mac-side only.
 enum QualityGate: String, Codable, Sendable, CaseIterable {
-    case dcField          // baseline |B| within a few × Earth's field
-    case motion           // gyro/accel quiet, no orientation change
-    case clockConsistency // monotonic span ≈ wall span ≈ preregistered duration
-    case sampleCount      // achieved samples ≈ expected
+    case dcField  // baseline |B| within a few × Earth's field
+    case motion  // gyro/accel quiet, no orientation change
+    case clockConsistency  // monotonic span ≈ wall span ≈ preregistered duration
+    case sampleCount  // achieved samples ≈ expected
     case positiveControl  // a passing emitter-on control exists for a null to mean anything
 
     var title: String {
@@ -101,15 +101,27 @@ enum QualityGates {
 
     static func dcFieldResult(_ field: Double) -> GateResult {
         let ok = field >= GateReport.earthFieldLowMicrotesla && field <= GateReport.earthFieldHighMicrotesla
-        return GateResult(gate: .dcField, passed: ok, reason: ok
-            ? String(format: "Baseline |B| = %.0f µT, within a normal range for the Earth's field.", field)
-            : String(format: "Baseline |B| = %.0f µT vs the Earth's ~50 µT. A magnetic accessory (MagSafe, magnetic case or stand) is on the phone; remove it before recording — it dominates the sensor and its own field wander will look like signal.", field))
+        return GateResult(
+            gate: .dcField, passed: ok,
+            reason: ok
+                ? String(format: "Baseline |B| = %.0f µT, within a normal range for the Earth's field.", field)
+                : String(
+                    format:
+                        "Baseline |B| = %.0f µT vs the Earth's ~50 µT. A magnetic accessory (MagSafe, magnetic case or stand) is on the phone; remove it before recording — it dominates the sensor and its own field wander will look like signal.",
+                    field))
     }
 
-    struct MotionMetrics { var gyroPeak: Double; var accelPeak: Double; var orientationChanges: Int; var label: String }
+    struct MotionMetrics {
+        var gyroPeak: Double
+        var accelPeak: Double
+        var orientationChanges: Int
+        var label: String
+    }
 
     static func motionMetrics(_ samples: [SensorSample]) -> MotionMetrics {
-        let gyro = samples.map { sqrt($0.rotationRate.x * $0.rotationRate.x + $0.rotationRate.y * $0.rotationRate.y + $0.rotationRate.z * $0.rotationRate.z) }
+        let gyro = samples.map {
+            sqrt($0.rotationRate.x * $0.rotationRate.x + $0.rotationRate.y * $0.rotationRate.y + $0.rotationRate.z * $0.rotationRate.z)
+        }
         let accel = samples.map { $0.acceleration.magnitude }
         let gyroPeak = gyro.max() ?? 0
         let accelPeak = accel.max() ?? 0
@@ -121,11 +133,17 @@ enum QualityGates {
         }
         // The label is DERIVED, never taken from a user field.
         let label: String
-        if changes > 0 { label = "reoriented" }
-        else if gyroPeak > 1.0 { label = "rotating" }
-        else if accelPeak > 0.3 { label = "translating" }
-        else if gyroPeak > GateReport.gyroLimitRadPerSec || accelPeak > GateReport.accelLimitG { label = "restless" }
-        else { label = "stationary" }
+        if changes > 0 {
+            label = "reoriented"
+        } else if gyroPeak > 1.0 {
+            label = "rotating"
+        } else if accelPeak > 0.3 {
+            label = "translating"
+        } else if gyroPeak > GateReport.gyroLimitRadPerSec || accelPeak > GateReport.accelLimitG {
+            label = "restless"
+        } else {
+            label = "stationary"
+        }
         return MotionMetrics(gyroPeak: gyroPeak, accelPeak: accelPeak, orientationChanges: changes, label: label)
     }
 
@@ -133,27 +151,50 @@ enum QualityGates {
         let ok = m.orientationChanges == 0 && m.gyroPeak <= GateReport.gyroLimitRadPerSec && m.accelPeak <= GateReport.accelLimitG
         var reasons: [String] = []
         if m.orientationChanges > 0 { reasons.append("orientation changed \(m.orientationChanges)× mid-record") }
-        if m.gyroPeak > GateReport.gyroLimitRadPerSec { reasons.append(String(format: "gyro peaked at %.2f rad/s (limit %.2f)", m.gyroPeak, GateReport.gyroLimitRadPerSec)) }
-        if m.accelPeak > GateReport.accelLimitG { reasons.append(String(format: "user-acceleration peaked at %.2f g (limit %.2f)", m.accelPeak, GateReport.accelLimitG)) }
-        return GateResult(gate: .motion, passed: ok, reason: ok
-            ? String(format: "Derived motion: %@. Gyro peak %.3f rad/s, accel %.3f g, no orientation change.", m.label, m.gyroPeak, m.accelPeak)
-            : "Derived motion: \(m.label). " + reasons.joined(separator: "; ") + ". Turning the phone in the Earth's 50 µT field writes a signal across the whole band, so this session cannot be preregistered.")
+        if m.gyroPeak > GateReport.gyroLimitRadPerSec {
+            reasons.append(String(format: "gyro peaked at %.2f rad/s (limit %.2f)", m.gyroPeak, GateReport.gyroLimitRadPerSec))
+        }
+        if m.accelPeak > GateReport.accelLimitG {
+            reasons.append(String(format: "user-acceleration peaked at %.2f g (limit %.2f)", m.accelPeak, GateReport.accelLimitG))
+        }
+        return GateResult(
+            gate: .motion, passed: ok,
+            reason: ok
+                ? String(
+                    format: "Derived motion: %@. Gyro peak %.3f rad/s, accel %.3f g, no orientation change.", m.label, m.gyroPeak,
+                    m.accelPeak)
+                : "Derived motion: \(m.label). " + reasons.joined(separator: "; ")
+                    + ". Turning the phone in the Earth's 50 µT field writes a signal across the whole band, so this session cannot be preregistered."
+        )
     }
 
     static func clockResult(monoSpan: Double, wallSpan: Double, duration: Double) -> GateResult {
         let tol = GateReport.clockToleranceFraction
-        let a = max(monoSpan, wallSpan, duration), b = min(monoSpan, wallSpan, duration)
+        let a = max(monoSpan, wallSpan, duration)
+        let b = min(monoSpan, wallSpan, duration)
         let ok = a > 0 && (a - b) / a <= tol
-        return GateResult(gate: .clockConsistency, passed: ok, reason: ok
-            ? String(format: "Monotonic %.1f s, wall %.1f s, preregistered %.0f s all agree within %.0f%%.", monoSpan, wallSpan, duration, tol * 100)
-            : String(format: "Monotonic span %.2f s, wall span %.2f s, preregistered %.0f s disagree beyond %.0f%%. Two clocks that far apart mean samples were dropped or the run was interrupted; the timebase cannot be trusted.", monoSpan, wallSpan, duration, tol * 100))
+        return GateResult(
+            gate: .clockConsistency, passed: ok,
+            reason: ok
+                ? String(
+                    format: "Monotonic %.1f s, wall %.1f s, preregistered %.0f s all agree within %.0f%%.", monoSpan, wallSpan, duration,
+                    tol * 100)
+                : String(
+                    format:
+                        "Monotonic span %.2f s, wall span %.2f s, preregistered %.0f s disagree beyond %.0f%%. Two clocks that far apart mean samples were dropped or the run was interrupted; the timebase cannot be trusted.",
+                    monoSpan, wallSpan, duration, tol * 100))
     }
 
     static func sampleCountResult(got: Int, expected: Int) -> GateResult {
         let ok = expected <= 0 || Double(got) >= Double(expected) * GateReport.minimumSampleFraction
-        return GateResult(gate: .sampleCount, passed: ok, reason: ok
-            ? "Collected \(got) samples of ~\(expected) expected."
-            : String(format: "Collected %d samples of ~%d expected (%.0f%%). Below %.0f%% means the sensor was starved — a throttled app, a dropped stream — and the analysis window is not what was preregistered.", got, expected, expected > 0 ? Double(got) / Double(expected) * 100 : 0, GateReport.minimumSampleFraction * 100))
+        return GateResult(
+            gate: .sampleCount, passed: ok,
+            reason: ok
+                ? "Collected \(got) samples of ~\(expected) expected."
+                : String(
+                    format:
+                        "Collected %d samples of ~%d expected (%.0f%%). Below %.0f%% means the sensor was starved — a throttled app, a dropped stream — and the analysis window is not what was preregistered.",
+                    got, expected, expected > 0 ? Double(got) / Double(expected) * 100 : 0, GateReport.minimumSampleFraction * 100))
     }
 
     /// |Δ|B|| vs rotation-rate magnitude. A real external vector does not correlate with how the
@@ -162,7 +203,12 @@ enum QualityGates {
         guard samples.count > 3 else { return 0 }
         let mag = samples.map(\.magnetic.magnitude)
         let dMag = (1..<mag.count).map { abs(mag[$0] - mag[$0 - 1]) }
-        let rot = (1..<samples.count).map { sqrt(samples[$0].rotationRate.x * samples[$0].rotationRate.x + samples[$0].rotationRate.y * samples[$0].rotationRate.y + samples[$0].rotationRate.z * samples[$0].rotationRate.z) }
+        let rot = (1..<samples.count).map {
+            sqrt(
+                samples[$0].rotationRate.x * samples[$0].rotationRate.x + samples[$0].rotationRate.y * samples[$0].rotationRate.y + samples[
+                    $0
+                ].rotationRate.z * samples[$0].rotationRate.z)
+        }
         return correlation(dMag, rot)
     }
 
@@ -170,13 +216,21 @@ enum QualityGates {
 
     static func median(_ x: [Double]) -> Double {
         guard !x.isEmpty else { return 0 }
-        let s = x.sorted(); return s[s.count / 2]
+        let s = x.sorted()
+        return s[s.count / 2]
     }
     static func correlation(_ a: [Double], _ b: [Double]) -> Double {
         guard a.count == b.count, a.count > 1 else { return 0 }
-        let ma = a.reduce(0, +) / Double(a.count), mb = b.reduce(0, +) / Double(b.count)
-        var num = 0.0, da = 0.0, db = 0.0
-        for (x, y) in zip(a, b) { num += (x - ma) * (y - mb); da += (x - ma) * (x - ma); db += (y - mb) * (y - mb) }
+        let ma = a.reduce(0, +) / Double(a.count)
+        let mb = b.reduce(0, +) / Double(b.count)
+        var num = 0.0
+        var da = 0.0
+        var db = 0.0
+        for (x, y) in zip(a, b) {
+            num += (x - ma) * (y - mb)
+            da += (x - ma) * (x - ma)
+            db += (y - mb) * (y - mb)
+        }
         return num / max(1e-15, (da * db).squareRoot())
     }
 }

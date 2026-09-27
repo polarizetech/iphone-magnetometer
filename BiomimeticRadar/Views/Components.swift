@@ -11,7 +11,10 @@ enum LabTheme {
 struct LabCard<Content: View>: View {
     let title: String
     @ViewBuilder let content: Content
-    init(_ title: String, @ViewBuilder content: () -> Content) { self.title = title; self.content = content() }
+    init(_ title: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.content = content()
+    }
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text(title.uppercased()).font(.caption.weight(.semibold)).tracking(1.2).foregroundStyle(.secondary)
@@ -56,12 +59,3 @@ struct EmptyChart: View {
         }.frame(maxWidth: .infinity, minHeight: 170)
     }
 }
-
-struct ShareSheet: UIViewControllerRepresentable {
-    let items: [Any]
-    func makeUIViewController(context: Context) -> UIActivityViewController {
-        UIActivityViewController(activityItems: items, applicationActivities: nil)
-    }
-    func updateUIViewController(_ uiViewController: UIActivityViewController, context: Context) {}
-}
-

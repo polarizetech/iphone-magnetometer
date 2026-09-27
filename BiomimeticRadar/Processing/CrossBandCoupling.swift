@@ -56,13 +56,16 @@ struct CrossBandCoupling: Sendable {
     /// sit between roughly 1e-3 and 1e-1; 1e-5 is two orders below anything anyone reports.
     static let minimumMeaningfulIndex = 1e-5
 
-    static func couple(signal: [Double], sampleRateHz rate: Double,
-                       slow: BandRegistry.Band, fast: BandRegistry.Band,
-                       surrogates: Int = 200, seed: UInt64 = 0x5EEDB0D) -> Result {
+    static func couple(
+        signal: [Double], sampleRateHz rate: Double,
+        slow: BandRegistry.Band, fast: BandRegistry.Band,
+        surrogates: Int = 200, seed: UInt64 = 0x5EEDB0D
+    ) -> Result {
         func refuse(_ reason: String) -> Result {
-            Result(slowBandID: slow.id, fastBandID: fast.id, slowLabel: slow.label,
-                   fastLabel: fast.label, modulationIndex: nil, modulatorAmplitude: nil,
-                   effectInNullSD: nil, pValue: nil, surrogates: 0, admissible: false, verdict: reason)
+            Result(
+                slowBandID: slow.id, fastBandID: fast.id, slowLabel: slow.label,
+                fastLabel: fast.label, modulationIndex: nil, modulatorAmplitude: nil,
+                effectInNullSD: nil, pValue: nil, surrogates: 0, admissible: false, verdict: reason)
         }
 
         // Both bands are searched WHERE THEY ACTUALLY APPEAR, which for mains is never where it is.
@@ -75,7 +78,9 @@ struct CrossBandCoupling: Sendable {
         let slowSeen = BandRegistry.visibility(of: slow, sampleRateHz: rate, targetHz: 0)
         let fastSeen = BandRegistry.visibility(of: fast, sampleRateHz: rate, targetHz: 0)
         guard slowSeen.visibility != .smeared, fastSeen.visibility != .smeared else {
-            return refuse("Refused: at \(String(format: "%.0f", rate)) Hz one of these bands folds onto several stretches of the spectrum at once, so it has no envelope of its own to measure.")
+            return refuse(
+                "Refused: at \(String(format: "%.0f", rate)) Hz one of these bands folds onto several stretches of the spectrum at once, so it has no envelope of its own to measure."
+            )
         }
         let slowLow = max(0.01, slowSeen.apparentCentreHz - slow.widthHz / 2)
         let slowHigh = slowSeen.apparentCentreHz + slow.widthHz / 2
@@ -87,7 +92,9 @@ struct CrossBandCoupling: Sendable {
             return refuse("Refused: the \(fast.label) band does not fit inside the sampled spectrum at \(String(format: "%.0f", rate)) Hz.")
         }
         guard fastLow > 2 * slowHigh else {
-            return refuse("Refused: as they APPEAR at this sample rate, the bands are too close (\(String(format: "%.2f", fastLow)) Hz vs a modulator topping out at \(String(format: "%.2f", slowHigh)) Hz). A carrier must sit above twice the modulator's top edge, or the index measures their overlap rather than any coupling.")
+            return refuse(
+                "Refused: as they APPEAR at this sample rate, the bands are too close (\(String(format: "%.2f", fastLow)) Hz vs a modulator topping out at \(String(format: "%.2f", slowHigh)) Hz). A carrier must sit above twice the modulator's top edge, or the index measures their overlap rather than any coupling."
+            )
         }
         // The amplitude band a modulation search needs is fast ± slow.high. If that contains another
         // band's apparent location, modulation and beating between them are unseparable.
@@ -100,17 +107,23 @@ struct CrossBandCoupling: Sendable {
             return seen.apparentCentreHz >= amplitudeLow && seen.apparentCentreHz <= amplitudeHigh
         }
         if !occupants.isEmpty {
-            return refuse("Refused: the amplitude band this search needs (\(String(format: "%.2f–%.2f", amplitudeLow, amplitudeHigh)) Hz as sampled) also contains \(occupants.map(\.label).joined(separator: ", ")). Modulation and beating between neighbours are unseparable from one sensor — elf-structure-reader established this for the Schumann modes, and the same arithmetic applies here.")
+            return refuse(
+                "Refused: the amplitude band this search needs (\(String(format: "%.2f–%.2f", amplitudeLow, amplitudeHigh)) Hz as sampled) also contains \(occupants.map(\.label).joined(separator: ", ")). Modulation and beating between neighbours are unseparable from one sensor — elf-structure-reader established this for the Schumann modes, and the same arithmetic applies here."
+            )
         }
         // The carrier's envelope lives in its SIDEBANDS, at fast ± the modulation frequency. Pulling
         // the envelope from the carrier band alone excludes exactly the thing being measured — the
         // first version did that and reported nothing for a record modulated 80% deep. The fast
         // band is therefore extracted over the full amplitude band, which is also the band the
         // occupancy check above just cleared.
-        guard let slowAnalytic = FFT.analyticBand(signal, sampleRateHz: rate,
-                                                  lowHz: slowLow, highHz: slowHigh),
-              let fastAnalytic = FFT.analyticBand(signal, sampleRateHz: rate,
-                                                  lowHz: max(0.01, amplitudeLow), highHz: amplitudeHigh) else {
+        guard
+            let slowAnalytic = FFT.analyticBand(
+                signal, sampleRateHz: rate,
+                lowHz: slowLow, highHz: slowHigh),
+            let fastAnalytic = FFT.analyticBand(
+                signal, sampleRateHz: rate,
+                lowHz: max(0.01, amplitudeLow), highHz: amplitudeHigh)
+        else {
             return refuse("Refused: the record is too short to resolve both bands.")
         }
 
@@ -140,36 +153,55 @@ struct CrossBandCoupling: Sendable {
         // made of nothing. A modulation index below the numerical floor is no modulation, whatever
         // the z-score says, and that check comes first.
         if observed < minimumMeaningfulIndex {
-            return Result(slowBandID: slow.id, fastBandID: fast.id, slowLabel: slow.label,
-                          fastLabel: fast.label, modulationIndex: observed,
-                          modulatorAmplitude: modulatorAmplitude, effectInNullSD: nil,
-                          pValue: p, surrogates: surrogates, admissible: true,
-                          verdict: String(format: "No measurable modulation: MI %.2e is below the %.0e floor this test can resolve. The surrogate spread at this level is numerical noise, so no effect size is offered — a large z against a null with no width is a big number made of nothing.",
-                                          observed, minimumMeaningfulIndex))
+            return Result(
+                slowBandID: slow.id, fastBandID: fast.id, slowLabel: slow.label,
+                fastLabel: fast.label, modulationIndex: observed,
+                modulatorAmplitude: modulatorAmplitude, effectInNullSD: nil,
+                pValue: p, surrogates: surrogates, admissible: true,
+                verdict: String(
+                    format:
+                        "No measurable modulation: MI %.2e is below the %.0e floor this test can resolve. The surrogate spread at this level is numerical noise, so no effect size is offered — a large z against a null with no width is a big number made of nothing.",
+                    observed, minimumMeaningfulIndex))
         }
-        let modulatorNote = String(format: " Modulator amplitude in the %@ band: %.3g — if that is at the record's noise level, the phase reference is noise and the index above means nothing.",
-                                   slow.label, modulatorAmplitude)
-        let foldNote = fastSeen.visibility == .folded
-            ? String(format: " The carrier is folded: %.1f Hz appears at %.1f Hz here. Its envelope survives undersampling, its sideband order does not — which matters for a phase claim and not for this one.", fast.centreHz, fastSeen.apparentCentreHz)
+        let modulatorNote = String(
+            format:
+                " Modulator amplitude in the %@ band: %.3g — if that is at the record's noise level, the phase reference is noise and the index above means nothing.",
+            slow.label, modulatorAmplitude)
+        let foldNote =
+            fastSeen.visibility == .folded
+            ? String(
+                format:
+                    " The carrier is folded: %.1f Hz appears at %.1f Hz here. Its envelope survives undersampling, its sideband order does not — which matters for a phase claim and not for this one.",
+                fast.centreHz, fastSeen.apparentCentreHz)
             : ""
 
         let verdict: String
         if effect.isFinite && effect >= 4 && p <= 0.01 {
-            verdict = String(format: "%.1f null SD above its surrogates (MI %.2e, p %.4f). Read the effect size first: this is a large one. It is still a statement about THIS record, and a nested signal claim needs it to repeat.",
-                             effect, observed, p) + foldNote + modulatorNote
+            verdict =
+                String(
+                    format:
+                        "%.1f null SD above its surrogates (MI %.2e, p %.4f). Read the effect size first: this is a large one. It is still a statement about THIS record, and a nested signal claim needs it to repeat.",
+                    effect, observed, p) + foldNote + modulatorNote
         } else if effect.isFinite && effect >= 2 {
-            verdict = String(format: "%.1f null SD above its surrogates (MI %.2e, p %.4f). Suggestive and no more — this size of effect appears routinely in autocorrelated records.",
-                             effect, observed, p) + foldNote + modulatorNote
+            verdict =
+                String(
+                    format:
+                        "%.1f null SD above its surrogates (MI %.2e, p %.4f). Suggestive and no more — this size of effect appears routinely in autocorrelated records.",
+                    effect, observed, p) + foldNote + modulatorNote
         } else {
-            verdict = String(format: "Nothing: %.1f null SD (MI %.2e, p %.4f). The slow band's phase does not predict the fast band's amplitude in this record.",
-                             effect, observed, p) + foldNote + modulatorNote
+            verdict =
+                String(
+                    format:
+                        "Nothing: %.1f null SD (MI %.2e, p %.4f). The slow band's phase does not predict the fast band's amplitude in this record.",
+                    effect, observed, p) + foldNote + modulatorNote
         }
 
-        return Result(slowBandID: slow.id, fastBandID: fast.id, slowLabel: slow.label,
-                      fastLabel: fast.label, modulationIndex: observed,
-                      modulatorAmplitude: modulatorAmplitude,
-                      effectInNullSD: effect.isFinite ? effect : nil, pValue: p,
-                      surrogates: surrogates, admissible: true, verdict: verdict)
+        return Result(
+            slowBandID: slow.id, fastBandID: fast.id, slowLabel: slow.label,
+            fastLabel: fast.label, modulationIndex: observed,
+            modulatorAmplitude: modulatorAmplitude,
+            effectInNullSD: effect.isFinite ? effect : nil, pValue: p,
+            surrogates: surrogates, admissible: true, verdict: verdict)
     }
 
     /// Tort modulation index: `(log N − H(P)) / log N`, 0 = flat, 1 = all amplitude in one phase bin.

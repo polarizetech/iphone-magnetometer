@@ -54,7 +54,10 @@ final class EnvironmentProbe {
         altimeterStarted = true
         altimeter.startRelativeAltitudeUpdates(to: .main) { [weak self] data, error in
             guard let self else { return }
-            if let error { self.altimeterNote = "Barometer error: \(error.localizedDescription)"; return }
+            if let error {
+                self.altimeterNote = "Barometer error: \(error.localizedDescription)"
+                return
+            }
             guard let data else { return }
             self.latestPressureKPa = data.pressure.doubleValue
             self.latestAltitudeM = data.relativeAltitude.doubleValue

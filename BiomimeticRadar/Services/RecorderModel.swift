@@ -43,12 +43,13 @@ final class RecorderModel: ObservableObject {
         stream = StreamController(sensor: sensor)
         stream.emitterStamp = { [weak self] in
             guard let self, self.emitter.isPhoneEmitting else { return nil }
-            return StreamChunk.EmitterStamp(stamp: EmitterSchedule.stamp,
-                                            transducer: self.emitter.transducer.rawValue,
-                                            carrierHz: self.emitter.carrierHz,
-                                            code: self.emitter.code,
-                                            chipSeconds: self.emitter.chipSeconds,
-                                            amplitude: self.emitter.amplitude)
+            return StreamChunk.EmitterStamp(
+                stamp: EmitterSchedule.stamp,
+                transducer: self.emitter.transducer.rawValue,
+                carrierHz: self.emitter.carrierHz,
+                code: self.emitter.code,
+                chipSeconds: self.emitter.chipSeconds,
+                amplitude: self.emitter.amplitude)
         }
     }
 
@@ -62,8 +63,9 @@ final class RecorderModel: ObservableObject {
     func startPreview() {
         guard !previewing else { return }
         previewing = true
-        _ = sensor.start(sampleRate: stream.settings.sampleRateHz, includeLocation: false,
-                         attitude: true, owner: .preview)
+        _ = sensor.start(
+            sampleRate: stream.settings.sampleRateHz, includeLocation: false,
+            attitude: true, owner: .preview)
         preflightTimer?.invalidate()
         preflightTimer = Timer.scheduledTimer(withTimeInterval: 0.5, repeats: true) { [weak self] _ in
             Task { @MainActor in self?.refreshPreflight() }
@@ -73,13 +75,17 @@ final class RecorderModel: ObservableObject {
     func stopPreview() {
         guard previewing else { return }
         previewing = false
-        preflightTimer?.invalidate(); preflightTimer = nil
+        preflightTimer?.invalidate()
+        preflightTimer = nil
         sensor.stop(owner: .preview)
     }
 
     func refreshPreflight() {
         let recent = sensor.recentSamples
-        guard recent.count >= 8 else { preflight = GateReport(); return }
+        guard recent.count >= 8 else {
+            preflight = GateReport()
+            return
+        }
         preflight = QualityGates.preflight(samples: Array(recent.suffix(200)))
     }
 

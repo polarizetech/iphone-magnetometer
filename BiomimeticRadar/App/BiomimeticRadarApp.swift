@@ -19,9 +19,14 @@ struct BiomimeticRadarApp: App {
 /// the app was suspended or relaunched while chunks were in flight. Touching `StreamUploader.shared`
 /// here also guarantees the session is recreated with the same identifier before iOS delivers them.
 final class AppDelegate: NSObject, UIApplicationDelegate {
-    func application(_ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
-                     completionHandler: @escaping () -> Void) {
-        guard identifier == StreamUploader.sessionIdentifier else { completionHandler(); return }
+    func application(
+        _ application: UIApplication, handleEventsForBackgroundURLSession identifier: String,
+        completionHandler: @escaping () -> Void
+    ) {
+        guard identifier == StreamUploader.sessionIdentifier else {
+            completionHandler()
+            return
+        }
         Task { @MainActor in StreamUploader.shared.handleBackgroundEvents(completion: completionHandler) }
     }
 }

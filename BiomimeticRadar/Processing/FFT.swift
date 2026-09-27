@@ -22,7 +22,10 @@ enum FFT {
                 imaginary.swapAt(i, j)
             }
             var k = n >> 1
-            while k <= j { j -= k; k >>= 1 }
+            while k <= j {
+                j -= k
+                k >>= 1
+            }
             j += k
         }
 
@@ -30,12 +33,15 @@ enum FFT {
         while length <= n {
             let sign: Double = inverse ? 1 : -1
             let angle: Double = sign * 2 * Double.pi / Double(length)
-            let wReal = cos(angle), wImaginary = sin(angle)
+            let wReal = cos(angle)
+            let wImaginary = sin(angle)
             var start = 0
             while start < n {
-                var currentReal = 1.0, currentImaginary = 0.0
+                var currentReal = 1.0
+                var currentImaginary = 0.0
                 for offset in 0..<(length / 2) {
-                    let a = start + offset, b = a + length / 2
+                    let a = start + offset
+                    let b = a + length / 2
                     let tReal: Double = currentReal * real[b] - currentImaginary * imaginary[b]
                     let tImaginary: Double = currentReal * imaginary[b] + currentImaginary * real[b]
                     real[b] = real[a] - tReal
@@ -96,8 +102,10 @@ enum FFT {
     /// and rings in time. For the offline windows this is used on (thousands of samples, bands well
     /// inside the passband) that is the right trade; the alternative is a filter whose own phase
     /// response contaminates the phase being measured, which would be worse for exactly this job.
-    static func analyticBand(_ signal: [Double], sampleRateHz rate: Double,
-                             lowHz: Double, highHz: Double) -> (envelope: [Double], phase: [Double])? {
+    static func analyticBand(
+        _ signal: [Double], sampleRateHz rate: Double,
+        lowHz: Double, highHz: Double
+    ) -> (envelope: [Double], phase: [Double])? {
         let n = usableLength(signal.count)
         guard n >= 64, rate > 0, highHz > lowHz else { return nil }
         let mean = signal.prefix(n).reduce(0, +) / Double(n)

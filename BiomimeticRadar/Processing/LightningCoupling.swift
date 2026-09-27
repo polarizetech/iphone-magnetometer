@@ -21,7 +21,7 @@ import Foundation
 /// be enormous and still be invisible here.
 struct LightningCoupling: Sendable {
 
-    static let mu0 = 4 * Double.pi * 1e-7          // T·m/A
+    static let mu0 = 4 * Double.pi * 1e-7  // T·m/A
     /// Typical negative first return stroke. Klaus Berger's classic distribution: median ~30 kA.
     static let typicalPeakCurrentA = 30_000.0
     /// Return-stroke current rise/fall, order of magnitude.
@@ -89,12 +89,16 @@ struct LightningCoupling: Sendable {
     /// verdict computed against an assumed noise floor is the exact failure mode this repo's
     /// `noise_budget` work was written to prevent, so with no floor every arrival returns
     /// `.undetermined` rather than something reassuring.
-    static func arrivals(distanceMeters: Double,
-                         sampleRateHz: Double,
-                         peakCurrentA: Double = typicalPeakCurrentA,
-                         noiseFloorMicrotesla: Double? = nil) -> [Arrival] {
-        func build(_ name: String, _ peakMicrotesla: Double, _ duration: Double,
-                   _ note: String) -> Arrival {
+    static func arrivals(
+        distanceMeters: Double,
+        sampleRateHz: Double,
+        peakCurrentA: Double = typicalPeakCurrentA,
+        noiseFloorMicrotesla: Double? = nil
+    ) -> [Arrival] {
+        func build(
+            _ name: String, _ peakMicrotesla: Double, _ duration: Double,
+            _ note: String
+        ) -> Arrival {
             let surviving = survival(durationSeconds: duration, sampleRateHz: sampleRateHz)
             let delivered = peakMicrotesla * surviving
             var margin: Double?
@@ -105,42 +109,52 @@ struct LightningCoupling: Sendable {
                 margin = ratio
                 if surviving < 0.01 {
                     reach = .outOfReach
-                    reason = "\(note) Unresolvable: the arrival is \(fmt(duration * 1e3)) ms against a \(fmt(1000 / sampleRateHz)) ms sample period, so \(fmt(surviving * 100))% of it survives the sampler. Integration does not recover it — the bandwidth is gone before the ADC."
+                    reason =
+                        "\(note) Unresolvable: the arrival is \(fmt(duration * 1e3)) ms against a \(fmt(1000 / sampleRateHz)) ms sample period, so \(fmt(surviving * 100))% of it survives the sampler. Integration does not recover it — the bandwidth is gone before the ADC."
                 } else if ratio >= 3 {
                     reach = .withinReach
                     reason = "\(note) Delivered \(fmt(delivered)) µT against a measured \(fmt(floor)) µT floor: \(fmt(ratio))×."
                 } else if ratio >= 0.1 {
                     reach = .marginal
-                    reason = "\(note) Delivered \(fmt(delivered)) µT against a measured \(fmt(floor)) µT floor: \(fmt(ratio))×. Same order as the noise — a single sample will not show it; coherent dwell might."
+                    reason =
+                        "\(note) Delivered \(fmt(delivered)) µT against a measured \(fmt(floor)) µT floor: \(fmt(ratio))×. Same order as the noise — a single sample will not show it; coherent dwell might."
                 } else {
                     reach = .outOfReach
-                    reason = "\(note) Delivered \(fmt(delivered)) µT is \(fmt(1 / max(ratio, 1e-18)))× BELOW the measured \(fmt(floor)) µT floor."
+                    reason =
+                        "\(note) Delivered \(fmt(delivered)) µT is \(fmt(1 / max(ratio, 1e-18)))× BELOW the measured \(fmt(floor)) µT floor."
                 }
             } else {
-                reason = "\(note) No measured noise floor supplied, so no verdict is offered — run a baseline first. This is not an estimate that it is fine."
+                reason =
+                    "\(note) No measured noise floor supplied, so no verdict is offered — run a baseline first. This is not an estimate that it is fine."
             }
-            return Arrival(name: name, peakMicrotesla: peakMicrotesla, durationSeconds: duration,
-                           survivingFraction: surviving, deliveredMicrotesla: delivered,
-                           reach: reach, marginVersusNoise: margin, reason: reason)
+            return Arrival(
+                name: name, peakMicrotesla: peakMicrotesla, durationSeconds: duration,
+                survivingFraction: surviving, deliveredMicrotesla: delivered,
+                reach: reach, marginVersusNoise: margin, reason: reason)
         }
 
         let stroke = returnStrokeMicrotesla(peakCurrentA: peakCurrentA, distanceMeters: distanceMeters)
         let continuing = returnStrokeMicrotesla(peakCurrentA: continuingCurrentA, distanceMeters: distanceMeters)
         return [
-            build("Return-stroke induction field", stroke, returnStrokeDurationS,
-                  "μ₀·I/(2π·r) for \(fmt(peakCurrentA / 1000)) kA at \(fmt(distanceMeters / 1000)) km."),
-            build("Continuing current", continuing, continuingCurrentDurationS,
-                  "\(fmt(continuingCurrentA)) A tail at the same distance."),
-            build("Cavity ringing (Schumann transient)", cavityRingingTesla * 1e6, 0.5,
-                  "Global, distance-independent, order 1 pT. This is the arrival the 8.3 Hz target would be listening for."),
+            build(
+                "Return-stroke induction field", stroke, returnStrokeDurationS,
+                "μ₀·I/(2π·r) for \(fmt(peakCurrentA / 1000)) kA at \(fmt(distanceMeters / 1000)) km."),
+            build(
+                "Continuing current", continuing, continuingCurrentDurationS,
+                "\(fmt(continuingCurrentA)) A tail at the same distance."),
+            build(
+                "Cavity ringing (Schumann transient)", cavityRingingTesla * 1e6, 0.5,
+                "Global, distance-independent, order 1 pT. This is the arrival the 8.3 Hz target would be listening for."),
         ]
     }
 
     /// The distance at which a return stroke's *delivered* field equals the measured noise floor.
     /// Returns `nil` without a floor — same rule as `arrivals`.
-    static func equalNoiseDistanceMeters(sampleRateHz: Double,
-                                         peakCurrentA: Double = typicalPeakCurrentA,
-                                         noiseFloorMicrotesla: Double?) -> Double? {
+    static func equalNoiseDistanceMeters(
+        sampleRateHz: Double,
+        peakCurrentA: Double = typicalPeakCurrentA,
+        noiseFloorMicrotesla: Double?
+    ) -> Double? {
         guard let floor = noiseFloorMicrotesla, floor > 0, sampleRateHz > 0 else { return nil }
         let surviving = survival(durationSeconds: returnStrokeDurationS, sampleRateHz: sampleRateHz)
         guard surviving > 0 else { return nil }

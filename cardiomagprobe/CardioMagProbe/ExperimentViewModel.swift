@@ -44,18 +44,32 @@ final class ExperimentViewModel: ObservableObject {
     func start(useCameraPPG: Bool) {
         guard !isRecording else { return }
         sessionID = UUID().uuidString.lowercased()
-        samples.removeAll(keepingCapacity: true); sampleTimes.removeAll(keepingCapacity: true); beatTimes.removeAll(); ppgPoints.removeAll(); report = nil; exportedURL = nil
-        isRecording = true; startedAt = nil; elapsed = 0; status = "Recording · keep the phone completely stationary"
+        samples.removeAll(keepingCapacity: true)
+        sampleTimes.removeAll(keepingCapacity: true)
+        beatTimes.removeAll()
+        ppgPoints.removeAll()
+        report = nil
+        exportedURL = nil
+        isRecording = true
+        startedAt = nil
+        elapsed = 0
+        status = "Recording · keep the phone completely stationary"
         sensor.start()
         if useCameraPPG { ppg.requestAndStart() }
-        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in Task { @MainActor in
-            guard let self, let start = self.startedAt else { return }; self.elapsed = ProcessInfo.processInfo.systemUptime - start
-        } }
+        timer = Timer.scheduledTimer(withTimeInterval: 0.2, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                guard let self, let start = self.startedAt else { return }
+                self.elapsed = ProcessInfo.processInfo.systemUptime - start
+            }
+        }
     }
 
     func stop() {
         guard isRecording else { return }
-        sensor.stop(); ppg.stop(); timer?.invalidate(); isRecording = false
+        sensor.stop()
+        ppg.stop()
+        timer?.invalidate()
+        isRecording = false
         if condition == .noiseFloor && elapsed >= 60 { completedNoiseCalibration = true }
         status = "Stopped · running falsification-first analysis"
         report = SignalAnalysis.analyze(samples: samples, beatTimes: beatTimes, settings: settings)
@@ -64,23 +78,29 @@ final class ExperimentViewModel: ObservableObject {
 
     func markBeat() {
         let t = sampleTimes.last ?? ProcessInfo.processInfo.systemUptime
-        beatTimes.append(t); pendingBeat = true; updateHeartRate()
+        beatTimes.append(t)
+        pendingBeat = true
+        updateHeartRate()
     }
 
     func importBeatTimes(text: String) {
         let parsed = text.split { $0 == "," || $0 == "\n" || $0 == " " }.compactMap { Double($0) }
-        if let first = samples.first?.monotonicTime, let last = samples.last?.monotonicTime, (parsed.max() ?? .infinity) < last - first + 1 {
+        if let first = samples.first?.monotonicTime, let last = samples.last?.monotonicTime, (parsed.max() ?? .infinity) < last - first + 1
+        {
             beatTimes = parsed.map { first + $0 }.sorted()
             status = "Imported \(parsed.count) session-relative beat timestamps"
         } else {
-            beatTimes = parsed.sorted(); status = "Imported \(parsed.count) monotonic beat timestamps"
+            beatTimes = parsed.sorted()
+            status = "Imported \(parsed.count) monotonic beat timestamps"
         }
     }
 
     func export() {
         do {
-            exportedURL = try SessionExporter.export(samples: samples, beats: beatTimes, condition: condition, note: placementNote, achievedHz: achievedHz, settings: settings)
-            showShare = true; status = "Lossless CSV + JSON session exported"
+            exportedURL = try SessionExporter.export(
+                samples: samples, beats: beatTimes, condition: condition, note: placementNote, achievedHz: achievedHz, settings: settings)
+            showShare = true
+            status = "Lossless CSV + JSON session exported"
         } catch { status = "Export failed: \(error.localizedDescription)" }
     }
 
@@ -88,23 +108,40 @@ final class ExperimentViewModel: ObservableObject {
         if startedAt == nil { startedAt = f.timestamp }
         sampleTimes.append(f.timestamp)
         if sampleTimes.count > 250 { sampleTimes.removeFirst(sampleTimes.count - 250) }
-        if let first = sampleTimes.first, let last = sampleTimes.last, last > first { achievedHz = Double(sampleTimes.count - 1) / (last - first) }
-        latestMag = f.mag; accelMagnitude = sqrt(f.accel.0*f.accel.0 + f.accel.1*f.accel.1 + f.accel.2*f.accel.2); gyroMagnitude = sqrt(f.gyro.0*f.gyro.0 + f.gyro.1*f.gyro.1 + f.gyro.2*f.gyro.2)
-        let beat = pendingBeat; pendingBeat = false
+        if let first = sampleTimes.first, let last = sampleTimes.last, last > first {
+            achievedHz = Double(sampleTimes.count - 1) / (last - first)
+        }
+        latestMag = f.mag
+        accelMagnitude = sqrt(f.accel.0 * f.accel.0 + f.accel.1 * f.accel.1 + f.accel.2 * f.accel.2)
+        gyroMagnitude = sqrt(f.gyro.0 * f.gyro.0 + f.gyro.1 * f.gyro.1 + f.gyro.2 * f.gyro.2)
+        let beat = pendingBeat
+        pendingBeat = false
         let formatter = ISO8601DateFormatter()
-        samples.append(SensorSample(id: samples.count, sessionID: sessionID, monotonicTime: f.timestamp, wallClockISO8601: formatter.string(from: Date()), magX: f.mag.0, magY: f.mag.1, magZ: f.mag.2, calibratedMagX: f.calibratedMag?.0, calibratedMagY: f.calibratedMag?.1, calibratedMagZ: f.calibratedMag?.2, accelX: f.accel.0, accelY: f.accel.1, accelZ: f.accel.2, gyroX: f.gyro.0, gyroY: f.gyro.1, gyroZ: f.gyro.2, attitudeX: f.attitude?.0, attitudeY: f.attitude?.1, attitudeZ: f.attitude?.2, attitudeW: f.attitude?.3, ppg: latestPPG, beatMarker: beat, motionQuality: motionGood, condition: condition.rawValue, distanceCM: condition.distanceCM, placementNote: placementNote))
+        samples.append(
+            SensorSample(
+                id: samples.count, sessionID: sessionID, monotonicTime: f.timestamp, wallClockISO8601: formatter.string(from: Date()),
+                magX: f.mag.0, magY: f.mag.1, magZ: f.mag.2, calibratedMagX: f.calibratedMag?.0, calibratedMagY: f.calibratedMag?.1,
+                calibratedMagZ: f.calibratedMag?.2, accelX: f.accel.0, accelY: f.accel.1, accelZ: f.accel.2, gyroX: f.gyro.0,
+                gyroY: f.gyro.1, gyroZ: f.gyro.2, attitudeX: f.attitude?.0, attitudeY: f.attitude?.1, attitudeZ: f.attitude?.2,
+                attitudeW: f.attitude?.3, ppg: latestPPG, beatMarker: beat, motionQuality: motionGood, condition: condition.rawValue,
+                distanceCM: condition.distanceCM, placementNote: placementNote))
     }
 
     private func consumePPG(time: Double, value: Double, beat: Bool) {
         latestPPG = value
         ppgPoints.append(PPGPoint(id: ppgPoints.count, monotonicTime: time, value: value, isBeat: beat))
         if ppgPoints.count > 300 { ppgPoints.removeFirst() }
-        if beat { beatTimes.append(time); pendingBeat = true; updateHeartRate() }
+        if beat {
+            beatTimes.append(time)
+            pendingBeat = true
+            updateHeartRate()
+        }
     }
 
     private func updateHeartRate() {
         guard beatTimes.count >= 3 else { return }
-        let recent = Array(beatTimes.suffix(8)); let intervals = zip(recent.dropFirst(), recent).map(-)
+        let recent = Array(beatTimes.suffix(8))
+        let intervals = zip(recent.dropFirst(), recent).map(-)
         heartRate = 60 / SignalAnalysis.median(intervals)
     }
 }

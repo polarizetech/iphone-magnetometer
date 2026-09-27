@@ -1,8 +1,8 @@
 import XCTest
 #if canImport(BiomimeticRadar)
-@testable import BiomimeticRadar
+    @testable import BiomimeticRadar
 #else
-@testable import BiomimeticRadarCore
+    @testable import BiomimeticRadarCore
 #endif
 
 /// These pin the arithmetic that decides whether a lightning-mode session is worth running at all.
@@ -25,8 +25,9 @@ final class LightningCouplingTests: XCTestCase {
     func testReturnStrokeIsDestroyedByTheSampler() {
         let surviving = LightningCoupling.survival(durationSeconds: 100e-6, sampleRateHz: 50)
         XCTAssertEqual(surviving, 0.005, accuracy: 1e-9)
-        let arrivals = LightningCoupling.arrivals(distanceMeters: 1_000, sampleRateHz: 50,
-                                                  noiseFloorMicrotesla: 0.2)
+        let arrivals = LightningCoupling.arrivals(
+            distanceMeters: 1_000, sampleRateHz: 50,
+            noiseFloorMicrotesla: 0.2)
         let stroke = try! XCTUnwrap(arrivals.first { $0.name.contains("Return-stroke") })
         XCTAssertEqual(stroke.peakMicrotesla, 6.0, accuracy: 0.05)
         XCTAssertEqual(stroke.deliveredMicrotesla, 0.03, accuracy: 0.001)
@@ -37,8 +38,9 @@ final class LightningCouplingTests: XCTestCase {
     /// The continuing current is 300× weaker as a field and still the ONLY arrival that can reach a
     /// sample, because it is slow. Size and timescale are separate questions and the code keeps them so.
     func testContinuingCurrentIsTheOnlyOneTheBandwidthAllows() {
-        let arrivals = LightningCoupling.arrivals(distanceMeters: 300, sampleRateHz: 50,
-                                                  noiseFloorMicrotesla: 0.005)
+        let arrivals = LightningCoupling.arrivals(
+            distanceMeters: 300, sampleRateHz: 50,
+            noiseFloorMicrotesla: 0.005)
         let continuing = try! XCTUnwrap(arrivals.first { $0.name.contains("Continuing") })
         XCTAssertEqual(continuing.survivingFraction, 1.0, accuracy: 1e-9)
         XCTAssertEqual(continuing.peakMicrotesla, 0.0667, accuracy: 0.001)
@@ -49,8 +51,9 @@ final class LightningCouplingTests: XCTestCase {
     /// ~5 orders below a good phone magnetometer floor. This test exists so that number can never
     /// quietly disappear from the app.
     func testCavityRingingIsOutOfReachByFiveOrdersOfMagnitude() {
-        let arrivals = LightningCoupling.arrivals(distanceMeters: 500_000, sampleRateHz: 50,
-                                                  noiseFloorMicrotesla: 0.15)
+        let arrivals = LightningCoupling.arrivals(
+            distanceMeters: 500_000, sampleRateHz: 50,
+            noiseFloorMicrotesla: 0.15)
         let cavity = try! XCTUnwrap(arrivals.first { $0.name.contains("Cavity") })
         XCTAssertEqual(cavity.peakMicrotesla, 1e-6, accuracy: 1e-12)
         XCTAssertEqual(cavity.reach, .outOfReach)

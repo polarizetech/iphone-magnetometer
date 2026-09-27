@@ -22,13 +22,17 @@ struct InterferenceView: View {
                         row("Tell", src.tell)
                         row("Do", src.mitigation)
                         if let f = src.suggestedFilter, f.kind != .none {
-                            Text("Viewer filter: \(f.kind == .highPass ? "high-pass" : "notch")\(f.hz.map { String(format: " at %.2f Hz", $0) } ?? "")")
-                                .font(.caption2).foregroundStyle(LabTheme.cyan)
+                            Text(
+                                "Viewer filter: \(f.kind == .highPass ? "high-pass" : "notch")\(f.hz.map { String(format: " at %.2f Hz", $0) } ?? "")"
+                            )
+                            .font(.caption2).foregroundStyle(LabTheme.cyan)
                         }
                     }
                 }
-                Text("Amplitudes are order-of-magnitude, tier [C] — none measured on this phone. A clean baseline run is what turns them into numbers. See INTERFERENCE.md.")
-                    .font(.caption).foregroundStyle(.tertiary)
+                Text(
+                    "Amplitudes are order-of-magnitude, tier [C] — none measured on this phone. A clean baseline run is what turns them into numbers. See INTERFERENCE.md."
+                )
+                .font(.caption).foregroundStyle(.tertiary)
             }.padding()
         }
         .navigationTitle("Phone interference")

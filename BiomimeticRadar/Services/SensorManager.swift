@@ -13,8 +13,6 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
     @Published private(set) var isRunning = false
     @Published private(set) var errorMessage: String?
 
-    /// The experiment's tap. Kept by name for `AppModel`; the always-on stream uses `addTap`.
-    var onSample: ((SensorSample) -> Void)?
     /// Additional consumers of every sample. The always-on stream is one; nothing else is yet.
     private var taps: [UUID: (SensorSample) -> Void] = [:]
     /// Who has asked for the sensor to be running. The hardware stops only when this empties —
@@ -36,6 +34,9 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
     private let location = CLLocationManager()
     private var latestMotion: CMDeviceMotion?
     private var latestLocation: CLLocation?
+    /// The owners that asked for GPS. Location runs only while one of them holds the sensor, so
+    /// switching "Record GPS" off takes effect at the next start even while the preview keeps running.
+    private var locationOwners: Set<Owner> = []
     private var magnetometerTimes: [Double] = []
     private var motionTimes: [Double] = []
 
@@ -49,7 +50,9 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
 
     @discardableResult
     func addTap(_ tap: @escaping (SensorSample) -> Void) -> UUID {
-        let id = UUID(); taps[id] = tap; return id
+        let id = UUID()
+        taps[id] = tap
+        return id
     }
     func removeTap(_ id: UUID) { taps[id] = nil }
 
@@ -63,8 +66,10 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
     /// set to 64 Hz ran at ~101 Hz for 14 minutes because the preview had started the sensor at
     /// 100 Hz, and the only sign was an orange footnote.
     @discardableResult
-    func start(sampleRate: Double = 50, includeLocation: Bool = false, attitude: Bool = true,
-               owner: Owner = .experiment) -> String? {
+    func start(
+        sampleRate: Double = 50, includeLocation: Bool = false, attitude: Bool = true,
+        owner: Owner = .experiment
+    ) -> String? {
         guard motion.isMagnetometerAvailable else {
             errorMessage = "A physical iPhone with a magnetometer is required."
             return errorMessage
@@ -72,7 +77,7 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
         let wanted = max(1, min(100, sampleRate))
         if isRunning {
             owners.insert(owner)
-            if includeLocation { location.requestWhenInUseAuthorization(); location.startUpdatingLocation() }
+            setLocation(includeLocation, for: owner)
             guard abs(configuredRateHz - wanted) > 0.01 else { return nil }
             if owner != .preview && owners.subtracting([owner, .preview]).isEmpty {
                 motion.stopMagnetometerUpdates()
@@ -80,15 +85,14 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
                 configure(rate: wanted, attitude: attitude || attitudeEnabled)
                 return nil
             }
-            return String(format: "Sensor already running at %.0f Hz for %@; kept that rate", configuredRateHz,
-                          owners.subtracting([owner]).map(\.rawValue).joined(separator: ", "))
+            return String(
+                format: "Sensor already running at %.0f Hz for %@; kept that rate", configuredRateHz,
+                owners.subtracting([owner]).map(\.rawValue).joined(separator: ", "))
         }
         errorMessage = nil
         owners = [owner]
-        if includeLocation {
-            location.requestWhenInUseAuthorization()
-            location.startUpdatingLocation()
-        }
+        locationOwners = []
+        setLocation(includeLocation, for: owner)
         configure(rate: wanted, attitude: attitude)
         return nil
     }
@@ -130,16 +134,29 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
     /// Release one owner's hold. The hardware stops only when the last owner lets go.
     func stop(owner: Owner = .experiment) {
         owners.remove(owner)
+        setLocation(false, for: owner)
         guard owners.isEmpty else { return }
         motion.stopMagnetometerUpdates()
         motion.stopDeviceMotionUpdates()
-        location.stopUpdatingLocation()
         latestMotion = nil
         isRunning = false
     }
 
-    /// True when the hardware is running for someone other than `owner`.
-    func isHeld(byOthersThan owner: Owner) -> Bool { !owners.subtracting([owner]).isEmpty }
+    /// Start or stop GPS for one owner. With no owner wanting it, updates stop and the last fix is
+    /// dropped, so no later sample can carry a position.
+    private func setLocation(_ wanted: Bool, for owner: Owner) {
+        if wanted {
+            let first = locationOwners.isEmpty
+            locationOwners.insert(owner)
+            if first {
+                location.requestWhenInUseAuthorization()
+                location.startUpdatingLocation()
+            }
+        } else if locationOwners.remove(owner) != nil, locationOwners.isEmpty {
+            location.stopUpdatingLocation()
+            latestLocation = nil
+        }
+    }
 
     private func accept(_ magnetometer: CMMagnetometerData) {
         let device = latestMotion
@@ -148,12 +165,14 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
         let sample = SensorSample(
             monotonicTime: magnetometer.timestamp, wallTime: Date(),
             magnetic: Vector3(x: coordinate.x, y: coordinate.y, z: coordinate.z),
-            acceleration: Vector3(x: device?.userAcceleration.x ?? 0,
-                                  y: device?.userAcceleration.y ?? 0,
-                                  z: device?.userAcceleration.z ?? 0),
-            rotationRate: Vector3(x: device?.rotationRate.x ?? 0,
-                                  y: device?.rotationRate.y ?? 0,
-                                  z: device?.rotationRate.z ?? 0),
+            acceleration: Vector3(
+                x: device?.userAcceleration.x ?? 0,
+                y: device?.userAcceleration.y ?? 0,
+                z: device?.userAcceleration.z ?? 0),
+            rotationRate: Vector3(
+                x: device?.rotationRate.x ?? 0,
+                y: device?.rotationRate.y ?? 0,
+                z: device?.rotationRate.z ?? 0),
             attitude: Quaternion(x: q?.x ?? 0, y: q?.y ?? 0, z: q?.z ?? 0, w: q?.w ?? 1),
             orientation: UIDevice.current.orientation.fieldLabName,
             latitude: latestLocation?.coordinate.latitude,
@@ -165,7 +184,6 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
         latestSample = sample
         recentSamples.append(sample)
         recentSamples = Array(recentSamples.suffix(500))
-        onSample?(sample)
         for tap in taps.values { tap(sample) }
     }
 
@@ -176,6 +194,7 @@ final class SensorManager: NSObject, ObservableObject, @preconcurrency CLLocatio
     }
 
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
+        guard !locationOwners.isEmpty else { return }  // a fix delivered after GPS was switched off
         latestLocation = locations.last
     }
 

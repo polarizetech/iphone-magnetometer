@@ -1,23 +1,26 @@
 import XCTest
 #if canImport(BiomimeticRadar)
-@testable import BiomimeticRadar
+    @testable import BiomimeticRadar
 #else
-@testable import BiomimeticRadarCore
+    @testable import BiomimeticRadarCore
 #endif
 
 /// The census's job is to account for ALL the power and to refuse to name what it cannot identify.
 /// These tests mostly check that it refuses correctly.
 final class SignalCensusTests: XCTestCase {
 
-    private func record(_ builder: (Double) -> Double, rate: Double = 50, seconds: Double = 60,
-                        rotation: (Double) -> Double = { _ in 0 }) -> [SensorSample] {
+    private func record(
+        _ builder: (Double) -> Double, rate: Double = 50, seconds: Double = 60,
+        rotation: (Double) -> Double = { _ in 0 }
+    ) -> [SensorSample] {
         let n = Int(rate * seconds)
         return (0..<n).map { index in
             let t = Double(index) / rate
             let field = builder(t)
-            return SensorSample(monotonicTime: t, wallTime: Date(timeIntervalSince1970: t),
-                                magnetic: Vector3(x: field, y: 0, z: 0),
-                                rotationRate: Vector3(x: rotation(t), y: 0, z: 0))
+            return SensorSample(
+                monotonicTime: t, wallTime: Date(timeIntervalSince1970: t),
+                magnetic: Vector3(x: field, y: 0, z: 0),
+                rotationRate: Vector3(x: rotation(t), y: 0, z: 0))
         }
     }
 
@@ -132,11 +135,13 @@ final class SignalCensusTests: XCTestCase {
             let angle = 2 * Double.pi * 0.4 * t
             // Attitude sweeping through a rotation about x, and a |B| that follows it — the
             // signature of ordinary axis gain error in a real magnetometer.
-            let qx = sin(angle / 2), qw = cos(angle / 2)
-            return SensorSample(monotonicTime: t, wallTime: Date(timeIntervalSince1970: t),
-                                magnetic: Vector3(x: 48 + 3.0 * qx, y: 0, z: 0),
-                                rotationRate: Vector3(x: 2 * Double.pi * 0.4, y: 0, z: 0),
-                                attitude: Quaternion(x: qx, y: 0, z: 0, w: qw))
+            let qx = sin(angle / 2)
+            let qw = cos(angle / 2)
+            return SensorSample(
+                monotonicTime: t, wallTime: Date(timeIntervalSince1970: t),
+                magnetic: Vector3(x: 48 + 3.0 * qx, y: 0, z: 0),
+                rotationRate: Vector3(x: 2 * Double.pi * 0.4, y: 0, z: 0),
+                attitude: Quaternion(x: qx, y: 0, z: 0, w: qw))
         }
         let result = SignalCensus.census(samples: samples, sampleRateHz: rate, targetHz: 8.3)
         let explained = try! XCTUnwrap(result.motion.varianceExplained)
@@ -147,7 +152,8 @@ final class SignalCensusTests: XCTestCase {
     /// Rotation RATE cannot predict a field that follows orientation. Pinned so the regressor is
     /// never quietly swapped back.
     func testRotationRateIsTheWrongPredictor() {
-        let n = 2000, rate = 50.0
+        let n = 2000
+        let rate = 50.0
         // One rotation cycle: attitude sweeps once, |ω| peaks twice, and the field follows attitude.
         let field = (0..<n).map { 3.0 * sin(2 * .pi * 0.4 * Double($0) / rate) }
         let speed = (0..<n).map { abs(1.5 * cos(2 * .pi * 0.4 * Double($0) / rate)) }
@@ -168,13 +174,15 @@ final class SignalCensusTests: XCTestCase {
         let samples = (0..<600).map { index -> SensorSample in
             let t = Double(index) / rate
             let angle = 2 * Double.pi * 0.4 * t
-            return SensorSample(monotonicTime: t, wallTime: Date(),
-                                magnetic: Vector3(x: 48 + 3.0 * sin(angle / 2), y: 0, z: 0),
-                                rotationRate: Vector3(x: 2 * Double.pi * 0.4, y: 0, z: 0),
-                                attitude: Quaternion(x: sin(angle / 2), y: 0, z: 0, w: cos(angle / 2)))
+            return SensorSample(
+                monotonicTime: t, wallTime: Date(),
+                magnetic: Vector3(x: 48 + 3.0 * sin(angle / 2), y: 0, z: 0),
+                rotationRate: Vector3(x: 2 * Double.pi * 0.4, y: 0, z: 0),
+                attitude: Quaternion(x: sin(angle / 2), y: 0, z: 0, w: cos(angle / 2)))
         }
-        let coupling = SignalCensus.motionCoupling(samples: samples,
-                                                   ac: samples.map(\.magnetic.magnitude))
+        let coupling = SignalCensus.motionCoupling(
+            samples: samples,
+            ac: samples.map(\.magnetic.magnitude))
         XCTAssertEqual(coupling.rotationRangeRadPerS, 0, accuracy: 1e-9)
         XCTAssertNotNil(coupling.varianceExplained, "constant rotation is still motion")
     }
@@ -187,10 +195,11 @@ final class SignalCensusTests: XCTestCase {
         var generator = SeededGenerator(seed: 5)
         let samples = (0..<3000).map { index -> SensorSample in
             let t = Double(index) / rate
-            let mains: Double = 0.35 * sin(2 * .pi * 60.0 * t)      // genuinely 60 Hz in the room
+            let mains: Double = 0.35 * sin(2 * .pi * 60.0 * t)  // genuinely 60 Hz in the room
             let noise: Double = Double.random(in: -0.05...0.05, using: &generator)
-            return SensorSample(monotonicTime: t, wallTime: Date(),
-                                magnetic: Vector3(x: 48 + mains + noise, y: 0, z: 0))
+            return SensorSample(
+                monotonicTime: t, wallTime: Date(),
+                magnetic: Vector3(x: 48 + mains + noise, y: 0, z: 0))
         }
         let result = SignalCensus.census(samples: samples, sampleRateHz: rate, targetHz: 8.3)
         let mains = try! XCTUnwrap(result.components.first { $0.id == "mains-60" })
@@ -198,16 +207,21 @@ final class SignalCensusTests: XCTestCase {
         XCTAssertEqual(try XCTUnwrap(mains.centreHz), 10.0, accuracy: 0.3)
         XCTAssertTrue(mains.label.contains("folded"))
         XCTAssertGreaterThan(mains.fraction, 0.5)
-        XCTAssertTrue(result.notes.contains { $0.contains("folds to") && $0.contains("target") },
-                      "the fold onto the target band must be called out in the notes")
+        XCTAssertTrue(
+            result.notes.contains { $0.contains("folds to") && $0.contains("target") },
+            "the fold onto the target band must be called out in the notes")
 
         print("\n— census of a 60 Hz-contaminated 50 Hz record —")
-        print(String(format: "standing %.2f µT · AC RMS %.4f µT · unattributed %.1f%%",
-                     result.standingFieldMicrotesla, result.acRMSMicrotesla,
-                     result.unattributedFraction * 100))
+        print(
+            String(
+                format: "standing %.2f µT · AC RMS %.4f µT · unattributed %.1f%%",
+                result.standingFieldMicrotesla, result.acRMSMicrotesla,
+                result.unattributedFraction * 100))
         for component in result.components {
-            print(String(format: "  %-46@ %-14@ %6.2f%%", component.label as NSString,
-                         component.status.rawValue as NSString, component.fraction * 100))
+            print(
+                String(
+                    format: "  %-46@ %-14@ %6.2f%%", component.label as NSString,
+                    component.status.rawValue as NSString, component.fraction * 100))
         }
         for note in result.notes where note.hasPrefix("⚠️") { print("  " + note) }
     }
@@ -220,8 +234,9 @@ final class SignalCensusTests: XCTestCase {
             var generator = SeededGenerator(seed: seed)
             let samples = (0..<3000).map { index -> SensorSample in
                 let value = Double.random(in: -0.2...0.2, using: &generator)
-                return SensorSample(monotonicTime: Double(index) / 50, wallTime: Date(),
-                                    magnetic: Vector3(x: 48 + value, y: 0, z: 0))
+                return SensorSample(
+                    monotonicTime: Double(index) / 50, wallTime: Date(),
+                    magnetic: Vector3(x: 48 + value, y: 0, z: 0))
             }
             let result = SignalCensus.census(samples: samples, sampleRateHz: 50, targetHz: 8.3)
             let floor = try! XCTUnwrap(result.components.first { $0.id == "floor" })
@@ -231,16 +246,20 @@ final class SignalCensusTests: XCTestCase {
             // by construction — attributed to the REQUEST, not to a detection — and it legitimately
             // holds ~4% of the variance on a noise record simply by being 1 Hz wide.
             let targetShare = result.components.first { $0.id == "target" }?.fraction ?? 0
-            XCTAssertGreaterThan(result.unattributedFraction + targetShare, 0.99,
-                                 "seed \(seed): a named band holding only noise must stay unattributed")
+            XCTAssertGreaterThan(
+                result.unattributedFraction + targetShare, 0.99,
+                "seed \(seed): a named band holding only noise must stay unattributed")
             for component in result.components where component.id != "target" {
-                XCTAssertEqual(component.status, .unattributed,
-                               "seed \(seed): \(component.id) claimed noise as a finding")
+                XCTAssertEqual(
+                    component.status, .unattributed,
+                    "seed \(seed): \(component.id) claimed noise as a finding")
             }
-            XCTAssertTrue(result.components.filter { $0.id.hasPrefix("U-") }.isEmpty,
-                          "seed \(seed): pure noise must not produce unidentified LINES")
-            XCTAssertTrue(result.components.allSatisfy { $0.status != .suspected },
-                          "seed \(seed): pure noise must not produce a suspected band")
+            XCTAssertTrue(
+                result.components.filter { $0.id.hasPrefix("U-") }.isEmpty,
+                "seed \(seed): pure noise must not produce unidentified LINES")
+            XCTAssertTrue(
+                result.components.allSatisfy { $0.status != .suspected },
+                "seed \(seed): pure noise must not produce a suspected band")
         }
     }
 
@@ -250,11 +269,13 @@ final class SignalCensusTests: XCTestCase {
     func testProminenceThresholdScalesWithTheSearchSize() {
         XCTAssertEqual(SignalCensus.prominenceThresholdDB(binCount: 1024), 12.2, accuracy: 0.15)
         // More places to look means a higher bar.
-        XCTAssertGreaterThan(SignalCensus.prominenceThresholdDB(binCount: 8192),
-                             SignalCensus.prominenceThresholdDB(binCount: 1024))
+        XCTAssertGreaterThan(
+            SignalCensus.prominenceThresholdDB(binCount: 8192),
+            SignalCensus.prominenceThresholdDB(binCount: 1024))
         // A stricter false-alarm rate means a higher bar.
-        XCTAssertGreaterThan(SignalCensus.prominenceThresholdDB(binCount: 1024, alpha: 0.001),
-                             SignalCensus.prominenceThresholdDB(binCount: 1024, alpha: 0.01))
+        XCTAssertGreaterThan(
+            SignalCensus.prominenceThresholdDB(binCount: 1024, alpha: 0.001),
+            SignalCensus.prominenceThresholdDB(binCount: 1024, alpha: 0.01))
     }
 
     /// A component that appears halfway through a run is a different object from one that was

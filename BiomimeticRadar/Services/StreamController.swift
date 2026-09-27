@@ -26,7 +26,7 @@ import UIKit
 final class StreamController: ObservableObject {
     struct Settings: Codable, Equatable {
         /// The project's URL behind the gateway. `tools/tailscale/README.md` calls this the canonical one.
-        var serverURL = "https://<host>.<tailnet>.ts.net/biomimetic-radar"
+        var serverURL = "https://your-mac.your-tailnet.ts.net/biomimetic-radar"
         var deviceName = "iphone"
         /// Chunk length IS the live view's latency. 10 s is "live"; 300 s is "economy".
         var chunkSeconds = 10.0
@@ -115,12 +115,23 @@ final class StreamController: ObservableObject {
 
     func start() {
         guard state == .idle else { return }
-        guard endpointChunk != nil else { message = "Server URL is not a valid URL"; return }
+        guard endpointChunk != nil else {
+            message = "Server URL is not a valid URL"
+            return
+        }
         let id = String(UUID().uuidString.prefix(8)).lowercased()
-        streamID = id; seq = 0; buffer.removeAll(); buffered = 0; totalSamples = 0; ingested = 0
-        startedAt = Date(); lastChunkAt = nil; serverMissing = []
-        sensorNote = sensor.start(sampleRate: settings.sampleRateHz, includeLocation: settings.includeLocation,
-                                  attitude: settings.attitude, owner: .stream)
+        streamID = id
+        seq = 0
+        buffer.removeAll()
+        buffered = 0
+        totalSamples = 0
+        ingested = 0
+        startedAt = Date()
+        lastChunkAt = nil
+        serverMissing = []
+        sensorNote = sensor.start(
+            sampleRate: settings.sampleRateHz, includeLocation: settings.includeLocation,
+            attitude: settings.attitude, owner: .stream)
         if let error = sensor.errorMessage, !sensor.isRunning {
             message = error
             return
@@ -145,8 +156,10 @@ final class StreamController: ObservableObject {
         sensor.stop(owner: .stream)
         keepAlive.stop()
         environment.stop()
-        chunkTimer?.invalidate(); chunkTimer = nil
-        sweepTimer?.invalidate(); sweepTimer = nil
+        chunkTimer?.invalidate()
+        chunkTimer = nil
+        sweepTimer?.invalidate()
+        sweepTimer = nil
         observers.forEach { NotificationCenter.default.removeObserver($0) }
         observers.removeAll()
         state = .idle
@@ -187,7 +200,10 @@ final class StreamController: ObservableObject {
         buffer.append(sample)
         ingested += 1
         // Publish at ~4 Hz, not per sample — the UI does not need 100 redraws a second.
-        if ingested % 25 == 0 { buffered = buffer.count; totalSamples = ingested }
+        if ingested % 25 == 0 {
+            buffered = buffer.count
+            totalSamples = ingested
+        }
         // A timer that did not fire (a suspended process) must not grow an unbounded chunk.
         if Double(buffer.count) >= settings.sampleRateHz * max(settings.chunkSeconds, 1) * 3 { cut(reason: "overflow") }
     }
@@ -202,16 +218,19 @@ final class StreamController: ObservableObject {
         // The rate the sensor was actually set to, not the picker's value: they differed silently
         // for 14 minutes on 2026-09-16 (setting 64 Hz, sensor 100 Hz), and the chunks said 64.
         let applied = sensor.configuredRateHz > 0 ? sensor.configuredRateHz : settings.sampleRateHz
-        let args = (deviceID: deviceID, deviceName: settings.deviceName, rate: applied,
-                    emitter: emitterStamp?(), model: Self.deviceModel, system: UIDevice.current.systemVersion,
-                    app: Self.appVersion, aux: environment.read())
+        let args = (
+            deviceID: deviceID, deviceName: settings.deviceName, rate: applied,
+            emitter: emitterStamp?(), model: Self.deviceModel, system: UIDevice.current.systemVersion,
+            app: Self.appVersion, aux: environment.read()
+        )
         encodeQueue.async { [weak self] in
             do {
-                let encoded = try StreamChunk.encode(samples: samples, deviceID: args.deviceID, deviceName: args.deviceName,
-                                                     streamID: streamID, seq: thisSeq, requestedRateHz: args.rate,
-                                                     emitter: args.emitter, deviceModel: args.model,
-                                                     systemVersion: args.system, appVersion: args.app,
-                                                     aux: args.aux)
+                let encoded = try StreamChunk.encode(
+                    samples: samples, deviceID: args.deviceID, deviceName: args.deviceName,
+                    streamID: streamID, seq: thisSeq, requestedRateHz: args.rate,
+                    emitter: args.emitter, deviceModel: args.model,
+                    systemVersion: args.system, appVersion: args.app,
+                    aux: args.aux)
                 let url = try StreamSpool.write(encoded.body, streamID: streamID, seq: thisSeq)
                 Task { @MainActor in
                     guard let self else { return }
@@ -252,15 +271,18 @@ final class StreamController: ObservableObject {
 
     private func observeDeviceState() {
         let center = NotificationCenter.default
-        observers.append(center.addObserver(forName: UIDevice.batteryLevelDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.checkPower() }
-        })
-        observers.append(center.addObserver(forName: UIDevice.batteryStateDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.checkPower() }
-        })
-        observers.append(center.addObserver(forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
-            Task { @MainActor in self?.checkPower() }
-        })
+        observers.append(
+            center.addObserver(forName: UIDevice.batteryLevelDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.checkPower() }
+            })
+        observers.append(
+            center.addObserver(forName: UIDevice.batteryStateDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.checkPower() }
+            })
+        observers.append(
+            center.addObserver(forName: ProcessInfo.thermalStateDidChangeNotification, object: nil, queue: .main) { [weak self] _ in
+                Task { @MainActor in self?.checkPower() }
+            })
         checkPower()
     }
 
@@ -307,11 +329,13 @@ final class StreamController: ObservableObject {
             let keepAlive: String
             let aux: StreamChunk.EnvironmentReading
         }
-        let hello = Hello(deviceID: deviceID, deviceName: settings.deviceName, streamID: streamID ?? "", startedAt: startedAt ?? Date(),
-                          settings: settings, deviceModel: Self.deviceModel, systemVersion: UIDevice.current.systemVersion,
-                          appVersion: Self.appVersion, emitter: emitterStamp?(), keepAlive: keepAliveStatus,
-                          aux: environment.read())
-        let encoder = JSONEncoder(); encoder.dateEncodingStrategy = .iso8601
+        let hello = Hello(
+            deviceID: deviceID, deviceName: settings.deviceName, streamID: streamID ?? "", startedAt: startedAt ?? Date(),
+            settings: settings, deviceModel: Self.deviceModel, systemVersion: UIDevice.current.systemVersion,
+            appVersion: Self.appVersion, emitter: emitterStamp?(), keepAlive: keepAliveStatus,
+            aux: environment.read())
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
         guard let body = try? encoder.encode(hello) else { return }
         var request = URLRequest(url: url, timeoutInterval: 15)
         request.httpMethod = "POST"
@@ -320,9 +344,13 @@ final class StreamController: ObservableObject {
         URLSession.shared.dataTask(with: request) { [weak self] _, response, error in
             let code = (response as? HTTPURLResponse)?.statusCode ?? 0
             Task { @MainActor in
-                if let error { self?.message = "Server not reachable (\(error.localizedDescription)) — chunks will spool until it is" }
-                else if !(200..<300).contains(code) { self?.message = "Server answered HTTP \(code) to hello" }
-                else { self?.message = "Server reached · streaming" }
+                if let error {
+                    self?.message = "Server not reachable (\(error.localizedDescription)) — chunks will spool until it is"
+                } else if !(200..<300).contains(code) {
+                    self?.message = "Server answered HTTP \(code) to hello"
+                } else {
+                    self?.message = "Server reached · streaming"
+                }
             }
         }.resume()
     }
@@ -345,7 +373,8 @@ final class StreamController: ObservableObject {
         return "\(info?["CFBundleShortVersionString"] ?? "0") (\(info?["CFBundleVersion"] ?? "0"))"
     }
     static var deviceModel: String {
-        var system = utsname(); uname(&system)
+        var system = utsname()
+        uname(&system)
         return withUnsafePointer(to: &system.machine) {
             $0.withMemoryRebound(to: CChar.self, capacity: 1) { String(cString: $0) }
         }
@@ -402,5 +431,25 @@ final class BackgroundKeepAlive: NSObject, CLLocationManagerDelegate {
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {}
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
         onStatus?("keep-alive error: \(error.localizedDescription)")
+    }
+}
+
+/// Settings are saved as one JSON blob. The synthesized decoder fails the whole blob when a key is
+/// missing, so adding a field silently reset every installed phone to defaults, server URL included.
+/// Each field falls back to its default on its own instead. Defined in an extension so the memberwise
+/// and default initializers stay synthesized.
+extension StreamController.Settings {
+    init(from decoder: Decoder) throws {
+        self.init()
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        serverURL = try c.decodeIfPresent(String.self, forKey: .serverURL) ?? serverURL
+        deviceName = try c.decodeIfPresent(String.self, forKey: .deviceName) ?? deviceName
+        chunkSeconds = try c.decodeIfPresent(Double.self, forKey: .chunkSeconds) ?? chunkSeconds
+        sampleRateHz = try c.decodeIfPresent(Double.self, forKey: .sampleRateHz) ?? sampleRateHz
+        attitude = try c.decodeIfPresent(Bool.self, forKey: .attitude) ?? attitude
+        includeLocation = try c.decodeIfPresent(Bool.self, forKey: .includeLocation) ?? includeLocation
+        wifiOnly = try c.decodeIfPresent(Bool.self, forKey: .wifiOnly) ?? wifiOnly
+        pauseBelowBattery = try c.decodeIfPresent(Double.self, forKey: .pauseBelowBattery) ?? pauseBelowBattery
+        resumeAboveBattery = try c.decodeIfPresent(Double.self, forKey: .resumeAboveBattery) ?? resumeAboveBattery
     }
 }

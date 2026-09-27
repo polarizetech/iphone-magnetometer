@@ -55,10 +55,13 @@ enum Representation: String, Codable, CaseIterable, Identifiable, Sendable {
 
     var note: String {
         switch self {
-        case .vector: "Each axis analysed on its own terms, then combined coherently. Keeps polarity and phase. Sensitive to rotation — the motion gate exists for that. The default."
-        case .magnitude: "Rotation-invariant, so a turning phone does not write signal into it — and it discards polarity and phase, which is why it is no longer the default. Kept for display and comparison."
+        case .vector:
+            "Each axis analysed on its own terms, then combined coherently. Keeps polarity and phase. Sensitive to rotation — the motion gate exists for that. The default."
+        case .magnitude:
+            "Rotation-invariant, so a turning phone does not write signal into it — and it discards polarity and phase, which is why it is no longer the default. Kept for display and comparison."
         case .axisX, .axisY, .axisZ: "A single device axis. Sensitive to direction — and therefore to every rotation of the phone."
-        case .earthZ: "The field rotated into the Earth frame using the IMU attitude. A genuine external vector should be steady here while a device-fixed artefact is not."
+        case .earthZ:
+            "The field rotated into the Earth frame using the IMU attitude. A genuine external vector should be steady here while a device-fixed artefact is not."
         case .derivative: "Rate of change. Suppresses drift and emphasises transients; multiplies high-frequency noise by frequency."
         }
     }
@@ -99,8 +102,10 @@ struct ProcessingOptions: Codable, Sendable, Equatable {
     /// `vectorNormalization` (now `ExperimentProtocol.representation`), `crossCorrelation` (the
     /// matched filter IS the cross-correlation), `orientationMatching` (now the Signals tab's
     /// motion coupling, measured against attitude), `statistics` (Benjamini–Hochberg always runs).
-    static let removedControls = ["vectorNormalization", "crossCorrelation",
-                                  "orientationMatching", "statistics"]
+    static let removedControls = [
+        "vectorNormalization", "crossCorrelation",
+        "orientationMatching", "statistics",
+    ]
 }
 
 struct ExperimentProtocol: Codable, Sendable, Equatable {
@@ -146,10 +151,18 @@ enum ISOInterval {
     /// minutes after it — getting that backwards silently shifts a forecast by weeks.
     static func duration(_ text: String) -> TimeInterval {
         guard text.hasPrefix("P") else { return 0 }
-        var seconds = 0.0, number = "", inTime = false
+        var seconds = 0.0
+        var number = ""
+        var inTime = false
         for character in text.dropFirst() {
-            if character == "T" { inTime = true; continue }
-            if character.isNumber || character == "." { number.append(character); continue }
+            if character == "T" {
+                inTime = true
+                continue
+            }
+            if character.isNumber || character == "." {
+                number.append(character)
+                continue
+            }
             let value = Double(number) ?? 0
             number = ""
             switch character {

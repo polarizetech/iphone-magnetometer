@@ -99,18 +99,22 @@ struct SignalCensus: Sendable {
 
     // MARK: - the census
 
-    static func census(samples: [SensorSample], sampleRateHz rate: Double,
-                       targetHz: Double, targetBandwidthHz: Double = 1.0,
-                       policies: [String: BandRegistry.Policy] = BandRegistry.defaultPolicies) -> Result {
+    static func census(
+        samples: [SensorSample], sampleRateHz rate: Double,
+        targetHz: Double, targetBandwidthHz: Double = 1.0,
+        policies: [String: BandRegistry.Policy] = BandRegistry.defaultPolicies
+    ) -> Result {
         let magnitude = samples.map(\.magnetic.magnitude)
         guard magnitude.count >= 64, rate > 0 else {
-            return Result(sampleRateHz: rate, resolutionHz: 0, durationSeconds: 0,
-                          standingFieldMicrotesla: magnitude.first ?? 0, acRMSMicrotesla: 0,
-                          components: [], motion: MotionCoupling(
-                            varianceExplained: nil, rotationRangeRadPerS: 0, accelerationRangeG: 0,
-                            verdict: "Too few samples to census. At least 64 are needed."),
-                          unattributedFraction: 1, excludedFraction: 0, policies: policies,
-                          notes: ["Record too short to decompose."])
+            return Result(
+                sampleRateHz: rate, resolutionHz: 0, durationSeconds: 0,
+                standingFieldMicrotesla: magnitude.first ?? 0, acRMSMicrotesla: 0,
+                components: [],
+                motion: MotionCoupling(
+                    varianceExplained: nil, rotationRangeRadPerS: 0, accelerationRangeG: 0,
+                    verdict: "Too few samples to census. At least 64 are needed."),
+                unattributedFraction: 1, excludedFraction: 0, policies: policies,
+                notes: ["Record too short to decompose."])
         }
 
         let standing = magnitude.reduce(0, +) / Double(magnitude.count)
@@ -118,11 +122,12 @@ struct SignalCensus: Sendable {
         let acRMS = rms(ac)
         let (freqs, power) = FFT.spectrum(ac, sampleRateHz: rate)
         guard !power.isEmpty else {
-            return Result(sampleRateHz: rate, resolutionHz: 0, durationSeconds: 0,
-                          standingFieldMicrotesla: standing, acRMSMicrotesla: acRMS,
-                          components: [], motion: motionCoupling(samples: samples, ac: ac),
-                          unattributedFraction: 1, excludedFraction: 0, policies: policies,
-                          notes: ["Spectrum unavailable for this record length."])
+            return Result(
+                sampleRateHz: rate, resolutionHz: 0, durationSeconds: 0,
+                standingFieldMicrotesla: standing, acRMSMicrotesla: acRMS,
+                components: [], motion: motionCoupling(samples: samples, ac: ac),
+                unattributedFraction: 1, excludedFraction: 0, policies: policies,
+                notes: ["Spectrum unavailable for this record length."])
         }
         let n = power.count * 2
         let resolution = rate / Double(n)
@@ -142,7 +147,9 @@ struct SignalCensus: Sendable {
             guard !indices.isEmpty else { continue }
             excludedPower += indices.reduce(0.0) { $0 + power[$1] }
             indices.forEach { claimed[$0] = true }
-            notes.append("Excluded by policy: \(band.label). Its power is out of the budget below, and the budget therefore describes a filtered record.")
+            notes.append(
+                "Excluded by policy: \(band.label). Its power is out of the budget below, and the budget therefore describes a filtered record."
+            )
         }
         let totalPower = max(1e-30, grossPower - excludedPower)
 
@@ -158,15 +165,19 @@ struct SignalCensus: Sendable {
             let fraction = share(targetBins)
             targetBins.forEach { claimed[$0] = true }
             let host = BandRegistry.bands.first { $0.contains(targetHz) }
-            components.append(Component(
-                id: "target", label: String(format: "Target band · %.2f Hz", targetHz),
-                status: .attributed, fraction: fraction, amplitudeMicrotesla: amplitude(fraction),
-                centreHz: targetHz, bandwidthHz: targetBandwidthHz,
-                prominenceDB: prominence(power, freqs: freqs, centre: targetHz, resolution: resolution),
-                driftDB: halfSplitDB(ac, rate: rate, centre: targetHz, halfWidth: targetBandwidthHz / 2),
-                evidence: "This is where the protocol asked us to look. Power being here is NOT evidence of the coded signal — the matched filter and its permutation null answer that, not this census."
-                    + (host.map { " It sits inside \($0.label), which is claimed around it." } ?? ""),
-                discriminator: "The coded matched filter on the Analyze tab. A band with power and no code correlation is something else in the same band."))
+            components.append(
+                Component(
+                    id: "target", label: String(format: "Target band · %.2f Hz", targetHz),
+                    status: .attributed, fraction: fraction, amplitudeMicrotesla: amplitude(fraction),
+                    centreHz: targetHz, bandwidthHz: targetBandwidthHz,
+                    prominenceDB: prominence(power, freqs: freqs, centre: targetHz, resolution: resolution),
+                    driftDB: halfSplitDB(ac, rate: rate, centre: targetHz, halfWidth: targetBandwidthHz / 2),
+                    evidence:
+                        "This is where the protocol asked us to look. Power being here is NOT evidence of the coded signal — the matched filter and its permutation null answer that, not this census."
+                        + (host.map { " It sits inside \($0.label), which is claimed around it." } ?? ""),
+                    discriminator:
+                        "The coded matched filter on the Analyze tab. A band with power and no code correlation is something else in the same band."
+                ))
         }
 
         // 2. Every known band. **Folded bands claim first**, then ELF priority.
@@ -192,13 +203,18 @@ struct SignalCensus: Sendable {
             // a location would let it claim a swathe of spectrum it does not own — the mains
             // harmonic band did exactly that, swallowing 0–22.5 Hz at a 50 Hz rate.
             if seen.visibility == .smeared {
-                components.append(Component(
-                    id: band.id, label: band.label + " · unlocatable at this rate",
-                    status: .unattributed, fraction: 0, amplitudeMicrotesla: 0,
-                    centreHz: nil, bandwidthHz: band.widthHz, prominenceDB: nil, driftDB: nil,
-                    evidence: "\(band.origin) Expected: \(band.expectedAmplitude) \(seen.note)",
-                    discriminator: "Raise the sample rate until the band sits inside one Nyquist zone, or accept that this record cannot separate it from anything else."))
-                notes.append("⚠️ \(band.label) cannot be located at \(String(format: "%.1f", rate)) Hz sampling — it folds onto several parts of the spectrum at once, so any component below could contain some of it.")
+                components.append(
+                    Component(
+                        id: band.id, label: band.label + " · unlocatable at this rate",
+                        status: .unattributed, fraction: 0, amplitudeMicrotesla: 0,
+                        centreHz: nil, bandwidthHz: band.widthHz, prominenceDB: nil, driftDB: nil,
+                        evidence: "\(band.origin) Expected: \(band.expectedAmplitude) \(seen.note)",
+                        discriminator:
+                            "Raise the sample rate until the band sits inside one Nyquist zone, or accept that this record cannot separate it from anything else."
+                    ))
+                notes.append(
+                    "⚠️ \(band.label) cannot be located at \(String(format: "%.1f", rate)) Hz sampling — it folds onto several parts of the spectrum at once, so any component below could contain some of it."
+                )
                 continue
             }
 
@@ -228,37 +244,48 @@ struct SignalCensus: Sendable {
             let status: Status = (peak ?? 0) > bar ? .suspected : .unattributed
             var evidence = "\(band.origin) Expected: \(band.expectedAmplitude) \(seen.note)"
             if lostFraction > 0.05 && !overlapping.isEmpty {
-                evidence += String(format: " %.0f%% of this band's bins were claimed by an overlapping band (%@) — folded bands claim first, then ELF priority. What is measured here is the remainder, not the whole band.",
-                                   lostFraction * 100, overlapping.map(\.label).joined(separator: ", ") as NSString)
+                evidence += String(
+                    format:
+                        " %.0f%% of this band's bins were claimed by an overlapping band (%@) — folded bands claim first, then ELF priority. What is measured here is the remainder, not the whole band.",
+                    lostFraction * 100, overlapping.map(\.label).joined(separator: ", ") as NSString)
             }
             if policy == .carrier {
                 evidence += " Policy CARRIER: its envelope is being checked for modulation by the watched bands."
             }
-            components.append(Component(
-                id: band.id, label: band.label + (seen.visibility == .direct ? "" : " · folded to \(String(format: "%.2f", seen.apparentCentreHz)) Hz"),
-                status: status, fraction: fraction, amplitudeMicrotesla: amplitude(fraction),
-                centreHz: seen.apparentCentreHz, bandwidthHz: 2 * half, prominenceDB: peak,
-                driftDB: halfSplitDB(ac, rate: rate, centre: seen.apparentCentreHz, halfWidth: half),
-                evidence: evidence,
-                discriminator: seen.visibility == .direct
-                    ? "Rotate the phone 90°: a device-fixed source turns with it, an external one does not. Then move 10 m from any wiring or motor."
-                    : "CHANGE THE SAMPLE RATE and re-census. An alias moves; a real line stays put. This is the cheapest discriminator on the whole screen and it settles the question in one run."))
+            components.append(
+                Component(
+                    id: band.id,
+                    label: band.label
+                        + (seen.visibility == .direct ? "" : " · folded to \(String(format: "%.2f", seen.apparentCentreHz)) Hz"),
+                    status: status, fraction: fraction, amplitudeMicrotesla: amplitude(fraction),
+                    centreHz: seen.apparentCentreHz, bandwidthHz: 2 * half, prominenceDB: peak,
+                    driftDB: halfSplitDB(ac, rate: rate, centre: seen.apparentCentreHz, halfWidth: half),
+                    evidence: evidence,
+                    discriminator: seen.visibility == .direct
+                        ? "Rotate the phone 90°: a device-fixed source turns with it, an external one does not. Then move 10 m from any wiring or motor."
+                        : "CHANGE THE SAMPLE RATE and re-census. An alias moves; a real line stays put. This is the cheapest discriminator on the whole screen and it settles the question in one run."
+                ))
             if seen.visibility == .folded && band.family == .anthropogenic {
                 let invaded = BandRegistry.bands.filter {
                     $0.family != .anthropogenic && $0.family != .instrument && $0.contains(seen.apparentCentreHz)
                 }
                 if !invaded.isEmpty {
-                    notes.append("⚠️ \(band.label) folds to \(String(format: "%.2f", seen.apparentCentreHz)) Hz at \(String(format: "%.1f", rate)) Hz sampling — INSIDE \(invaded.map(\.label).joined(separator: " and ")). Those bands cannot be measured at this sample rate: whatever is there is at least partly grid power wearing a different frequency.")
+                    notes.append(
+                        "⚠️ \(band.label) folds to \(String(format: "%.2f", seen.apparentCentreHz)) Hz at \(String(format: "%.1f", rate)) Hz sampling — INSIDE \(invaded.map(\.label).joined(separator: " and ")). Those bands cannot be measured at this sample rate: whatever is there is at least partly grid power wearing a different frequency."
+                    )
                 }
             }
             if seen.visibility != .direct && seen.hzFromTarget < 2 {
-                notes.append("⚠️ \(band.label) folds to \(String(format: "%.2f", seen.apparentCentreHz)) Hz at \(String(format: "%.1f", rate)) Hz sampling — \(String(format: "%.2f", seen.hzFromTarget)) Hz from the \(String(format: "%.2f", targetHz)) Hz target. Re-run at a different sample rate before believing anything in the target band.")
+                notes.append(
+                    "⚠️ \(band.label) folds to \(String(format: "%.2f", seen.apparentCentreHz)) Hz at \(String(format: "%.1f", rate)) Hz sampling — \(String(format: "%.2f", seen.hzFromTarget)) Hz from the \(String(format: "%.2f", targetHz)) Hz target. Re-run at a different sample rate before believing anything in the target band."
+                )
             }
         }
 
         // 3. Anonymous lines. Named by index, never by guess.
-        let anonymous = anonymousPeaks(power: power, freqs: freqs, claimed: &claimed,
-                                       resolution: resolution, limit: 8)
+        let anonymous = anonymousPeaks(
+            power: power, freqs: freqs, claimed: &claimed,
+            resolution: resolution, limit: 8)
         for (index, peak) in anonymous.enumerated() {
             let identifier = String(format: "U-%02d", index + 1)
             let fraction = share(peak.bins)
@@ -268,40 +295,54 @@ struct SignalCensus: Sendable {
                     relation = " Sits at \(harmonic)× the frequency of an earlier anonymous line, so the two are probably one source."
                 }
             }
-            components.append(Component(
-                id: identifier,
-                label: String(format: "%@ · unidentified line at %.3f Hz", identifier, peak.frequency),
-                status: .unattributed, fraction: fraction, amplitudeMicrotesla: amplitude(fraction),
-                centreHz: peak.frequency, bandwidthHz: 2 * resolution,
-                prominenceDB: peak.prominenceDB,
-                driftDB: halfSplitDB(ac, rate: rate, centre: peak.frequency, halfWidth: 2 * resolution),
-                evidence: String(format: "%.1f dB above the local spectral floor, and inside no band this instrument knows about.", peak.prominenceDB) + relation,
-                discriminator: "Three cheap tests, in order: change the sample rate (an alias moves), rotate the phone 90° (a device-fixed source rotates with it, an external one does not), and walk 10 m away from any wiring or motor."))
+            components.append(
+                Component(
+                    id: identifier,
+                    label: String(format: "%@ · unidentified line at %.3f Hz", identifier, peak.frequency),
+                    status: .unattributed, fraction: fraction, amplitudeMicrotesla: amplitude(fraction),
+                    centreHz: peak.frequency, bandwidthHz: 2 * resolution,
+                    prominenceDB: peak.prominenceDB,
+                    driftDB: halfSplitDB(ac, rate: rate, centre: peak.frequency, halfWidth: 2 * resolution),
+                    evidence: String(
+                        format: "%.1f dB above the local spectral floor, and inside no band this instrument knows about.", peak.prominenceDB
+                    ) + relation,
+                    discriminator:
+                        "Three cheap tests, in order: change the sample rate (an alias moves), rotate the phone 90° (a device-fixed source rotates with it, an external one does not), and walk 10 m away from any wiring or motor."
+                ))
         }
 
         // 4. Everything left is the broadband floor. It is unattributed too, and says so.
         let floorBins = claimed.indices.filter { !claimed[$0] }
         let floorFraction = share(floorBins)
-        components.append(Component(
-            id: "floor", label: "Broadband floor", status: .unattributed,
-            fraction: floorFraction, amplitudeMicrotesla: amplitude(floorFraction),
-            centreHz: nil, bandwidthHz: rate / 2, prominenceDB: nil, driftDB: nil,
-            evidence: "All remaining power, spread across the band with no line structure. Sensor noise, quantisation and whatever else has no peak. This is a floor, not an identification.",
-            discriminator: "It is the quantity `noise_budget.local_noise` measures properly. Until a baseline run exists, no detection threshold on this rig is a number."))
+        components.append(
+            Component(
+                id: "floor", label: "Broadband floor", status: .unattributed,
+                fraction: floorFraction, amplitudeMicrotesla: amplitude(floorFraction),
+                centreHz: nil, bandwidthHz: rate / 2, prominenceDB: nil, driftDB: nil,
+                evidence:
+                    "All remaining power, spread across the band with no line structure. Sensor noise, quantisation and whatever else has no peak. This is a floor, not an identification.",
+                discriminator:
+                    "It is the quantity `noise_budget.local_noise` measures properly. Until a baseline run exists, no detection threshold on this rig is a number."
+            ))
 
         let motion = motionCoupling(samples: samples, ac: ac)
         let unattributed = components.filter { $0.status == .unattributed }.reduce(0) { $0 + $1.fraction }
 
-        notes.append("The shares partition the AC variance and sum to 1. Motion coupling is reported separately because it writes across the whole band — adding it to a slice would count the same power twice.")
-        notes.append("Nothing is filtered out unless you set a band to EXCLUDE. Mains, drift and the sensor floor are all still in the budget, because a signal nested on a loud carrier is only findable while the carrier is still there.")
+        notes.append(
+            "The shares partition the AC variance and sum to 1. Motion coupling is reported separately because it writes across the whole band — adding it to a slice would count the same power twice."
+        )
+        notes.append(
+            "Nothing is filtered out unless you set a band to EXCLUDE. Mains, drift and the sensor floor are all still in the budget, because a signal nested on a loud carrier is only findable while the carrier is still there."
+        )
 
-        return Result(sampleRateHz: rate, resolutionHz: resolution,
-                      durationSeconds: Double(magnitude.count) / rate,
-                      standingFieldMicrotesla: standing, acRMSMicrotesla: acRMS,
-                      components: components.sorted { $0.fraction > $1.fraction },
-                      motion: motion, unattributedFraction: unattributed,
-                      excludedFraction: excludedPower / max(1e-30, grossPower),
-                      policies: policies, notes: notes)
+        return Result(
+            sampleRateHz: rate, resolutionHz: resolution,
+            durationSeconds: Double(magnitude.count) / rate,
+            standingFieldMicrotesla: standing, acRMSMicrotesla: acRMS,
+            components: components.sorted { $0.fraction > $1.fraction },
+            motion: motion, unattributedFraction: unattributed,
+            excludedFraction: excludedPower / max(1e-30, grossPower),
+            policies: policies, notes: notes)
     }
 
     // MARK: - motion
@@ -336,8 +377,10 @@ struct SignalCensus: Sendable {
         // orientation sweeps through a full circle. Caught by a test that did precisely that. The
         // gate is peak rotation speed and the spread of attitude itself.
         let peakRotation: Double = rotation.max() ?? 0
-        let attitudeChannels: [[Double]] = [samples.map(\.attitude.x), samples.map(\.attitude.y),
-                                            samples.map(\.attitude.z), samples.map(\.attitude.w)]
+        let attitudeChannels: [[Double]] = [
+            samples.map(\.attitude.x), samples.map(\.attitude.y),
+            samples.map(\.attitude.z), samples.map(\.attitude.w),
+        ]
         var attitudeSpread: Double = 0
         for column in attitudeChannels {
             let high: Double = column.max() ?? 0
@@ -349,7 +392,9 @@ struct SignalCensus: Sendable {
             return MotionCoupling(
                 varianceExplained: nil,
                 rotationRangeRadPerS: rotationRange, accelerationRangeG: accelerationRange,
-                verdict: "Cannot answer: the phone barely moved (peak rotation \(String(format: "%.3f", peakRotation)) rad/s, attitude spread \(String(format: "%.3f", attitudeSpread))). With no motion there is nothing to regress against, so this record cannot show whether motion couples — it is untested, not absent. That is the right outcome for a stationary run.")
+                verdict:
+                    "Cannot answer: the phone barely moved (peak rotation \(String(format: "%.3f", peakRotation)) rad/s, attitude spread \(String(format: "%.3f", attitudeSpread))). With no motion there is nothing to regress against, so this record cannot show whether motion couples — it is untested, not absent. That is the right outcome for a stationary run."
+            )
         }
 
         let predictors: [[Double]] = [
@@ -361,20 +406,32 @@ struct SignalCensus: Sendable {
         let verdict: String
         switch explained {
         case ..<0.05:
-            verdict = String(format: "%.1f%% of the AC variance is predictable from attitude. Motion is not driving this record.", explained * 100)
+            verdict = String(
+                format: "%.1f%% of the AC variance is predictable from attitude. Motion is not driving this record.", explained * 100)
         case ..<0.30:
-            verdict = String(format: "%.1f%% of the AC variance tracks attitude. Enough to contaminate a weak signal; re-run stationary before reading anything else on this screen.", explained * 100)
+            verdict = String(
+                format:
+                    "%.1f%% of the AC variance tracks attitude. Enough to contaminate a weak signal; re-run stationary before reading anything else on this screen.",
+                explained * 100)
         default:
-            verdict = String(format: "%.1f%% of the AC variance tracks attitude. This is a recording of the phone moving through the Earth's field, and the rest of the census is about that.", explained * 100)
+            verdict = String(
+                format:
+                    "%.1f%% of the AC variance tracks attitude. This is a recording of the phone moving through the Earth's field, and the rest of the census is about that.",
+                explained * 100)
         }
-        return MotionCoupling(varianceExplained: explained,
-                              rotationRangeRadPerS: rotationRange,
-                              accelerationRangeG: accelerationRange, verdict: verdict)
+        return MotionCoupling(
+            varianceExplained: explained,
+            rotationRangeRadPerS: rotationRange,
+            accelerationRangeG: accelerationRange, verdict: verdict)
     }
 
     // MARK: - maths
 
-    struct Peak { let frequency: Double; let prominenceDB: Double; let bins: [Int] }
+    struct Peak {
+        let frequency: Double
+        let prominenceDB: Double
+        let bins: [Int]
+    }
 
     /// The prominence a peak needs to be worth naming, given how many bins were searched.
     ///
@@ -393,7 +450,6 @@ struct SignalCensus: Sendable {
         return 10 * log10(expected)
     }
 
-
     /// Pick the lines that are not at any named frequency.
     ///
     /// Three guards, and the first two were added because a noiseless test record reported **eight**
@@ -405,9 +461,11 @@ struct SignalCensus: Sendable {
     /// 2. A candidate within `separationBins` of an accepted peak is that peak, not a new one.
     /// 3. An accepted peak **claims its skirt**, so the energy in the leakage is booked to the line
     ///    that produced it rather than left in the broadband floor.
-    static func anonymousPeaks(power: [Double], freqs: [Double], claimed: inout [Bool],
-                               resolution: Double, limit: Int,
-                               thresholdDB: Double? = nil, separationBins: Int = 6) -> [Peak] {
+    static func anonymousPeaks(
+        power: [Double], freqs: [Double], claimed: inout [Bool],
+        resolution: Double, limit: Int,
+        thresholdDB: Double? = nil, separationBins: Int = 6
+    ) -> [Peak] {
         // A stricter bar than the band test uses, deliberately. Naming a `U-nn` line asserts that
         // something is there and invites someone to go chase it; leaving a weak line in the floor
         // costs nothing, because the floor is still displayed. The asymmetry is in the alpha.
@@ -417,9 +475,11 @@ struct SignalCensus: Sendable {
             .sorted { power[$0] > power[$1] }
         for index in order {
             guard found.count < limit, !claimed[index] else { continue }
-            let low = max(0, index - 2), high = min(power.count - 1, index + 2)
+            let low = max(0, index - 2)
+            let high = min(power.count - 1, index + 2)
             guard let neighbourhood = (low...high).map({ power[$0] }).max(),
-                  power[index] >= neighbourhood else { continue }
+                power[index] >= neighbourhood
+            else { continue }
             let separationHz = Double(separationBins) * resolution
             guard !found.contains(where: { abs($0.frequency - freqs[index]) < separationHz }) else { continue }
             let floor = localFloor(power, at: index, exclude: separationBins, span: 60)
@@ -435,17 +495,21 @@ struct SignalCensus: Sendable {
     }
 
     static func localFloor(_ power: [Double], at index: Int, exclude: Int, span: Int) -> Double {
-        let low = max(0, index - span), high = min(power.count - 1, index + span)
+        let low = max(0, index - span)
+        let high = min(power.count - 1, index + span)
         let neighbours = (low...high).filter { abs($0 - index) > exclude }.map { power[$0] }
         guard !neighbours.isEmpty else { return 0 }
         let sorted = neighbours.sorted()
         return sorted[sorted.count / 2]
     }
 
-    static func prominence(_ power: [Double], freqs: [Double], centre: Double,
-                           resolution: Double) -> Double? {
+    static func prominence(
+        _ power: [Double], freqs: [Double], centre: Double,
+        resolution: Double
+    ) -> Double? {
         guard let index = freqs.indices.min(by: { abs(freqs[$0] - centre) < abs(freqs[$1] - centre) }),
-              abs(freqs[index] - centre) < max(resolution, 0.5) else { return nil }
+            abs(freqs[index] - centre) < max(resolution, 0.5)
+        else { return nil }
         let floor = localFloor(power, at: index, exclude: 3, span: 40)
         guard floor > 0, power[index] > 0 else { return nil }
         return 10 * log10(power[index] / floor)
@@ -496,7 +560,8 @@ struct SignalCensus: Sendable {
         var matrix = [[Double]](repeating: [Double](repeating: 0, count: k + 1), count: k)
         for row in 0..<k {
             for column in 0..<k {
-                matrix[row][column] = dot(columns[row], columns[column]) / Double(n)
+                matrix[row][column] =
+                    dot(columns[row], columns[column]) / Double(n)
                     + (row == column ? ridge : 0)
             }
             matrix[row][k] = dot(columns[row], target) / Double(n)
@@ -510,7 +575,7 @@ struct SignalCensus: Sendable {
             let error = target[index] - predicted
             residual += error * error
         }
-        let r2 = 1 - residual / Double(n)                                   // target variance is 1
+        let r2 = 1 - residual / Double(n)  // target variance is 1
         let adjusted = 1 - (1 - r2) * Double(n - 1) / Double(n - k - 1)
         return min(1, max(0, adjusted))
     }

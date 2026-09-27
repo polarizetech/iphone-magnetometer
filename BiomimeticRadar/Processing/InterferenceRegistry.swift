@@ -1,3 +1,5 @@
+// swift-format-ignore-file
+// serve.py, bands.py and dev_check.py read this file with regular expressions; keep its layout.
 import Foundation
 
 /// The known ways THIS PHONE interferes with its own magnetometer.

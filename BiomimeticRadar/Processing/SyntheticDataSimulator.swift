@@ -23,10 +23,12 @@ struct SyntheticDataSimulator: Sendable {
             let coded = scenario.code[chip] * scenario.amplitudeMicrotesla * sin(2 * .pi * scenario.carrierHz * t)
             let noise = gaussian(using: &generator) * scenario.noiseMicrotesla
             let drift = scenario.driftMicroteslaPerSecond * t
-            return SensorSample(monotonicTime: t, wallTime: start.addingTimeInterval(t),
-                                magnetic: Vector3(x: 21 + coded + noise + drift,
-                                                  y: -4 + 0.7 * noise,
-                                                  z: 42 + 0.35 * coded + 0.5 * noise))
+            return SensorSample(
+                monotonicTime: t, wallTime: start.addingTimeInterval(t),
+                magnetic: Vector3(
+                    x: 21 + coded + noise + drift,
+                    y: -4 + 0.7 * noise,
+                    z: 42 + 0.35 * coded + 0.5 * noise))
         }
     }
 

@@ -63,16 +63,20 @@ final class SensorRecorder {
         }
         manager.startMagnetometerUpdates(to: queue) { [weak self] data, error in
             guard let self else { return }
-            if let error { self.onError?(error.localizedDescription); return }
+            if let error {
+                self.onError?(error.localizedDescription)
+                return
+            }
             guard let d = data else { return }
-            self.onFrame?(MotionFrame(
-                timestamp: d.timestamp,
-                mag: (d.magneticField.x, d.magneticField.y, d.magneticField.z),
-                calibratedMag: self.calibrated,
-                accel: self.accel,
-                gyro: self.gyro,
-                attitude: self.attitude
-            ))
+            self.onFrame?(
+                MotionFrame(
+                    timestamp: d.timestamp,
+                    mag: (d.magneticField.x, d.magneticField.y, d.magneticField.z),
+                    calibratedMag: self.calibrated,
+                    accel: self.accel,
+                    gyro: self.gyro,
+                    attitude: self.attitude
+                ))
         }
     }
 
@@ -83,4 +87,3 @@ final class SensorRecorder {
         manager.stopDeviceMotionUpdates()
     }
 }
-

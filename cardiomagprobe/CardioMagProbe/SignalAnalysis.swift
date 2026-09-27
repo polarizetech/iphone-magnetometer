@@ -15,7 +15,8 @@ enum SignalAnalysis {
     static func analyze(samples: [SensorSample], beatTimes: [Double], settings: AnalysisSettings) -> AnalysisReport? {
         guard samples.count > 20, beatTimes.count >= 4 else { return nil }
         let time = samples.map(\.monotonicTime)
-        guard let firstTime = time.first, let lastTime = time.last, lastTime - firstTime > settings.preWindow + settings.postWindow + 0.1 else { return nil }
+        guard let firstTime = time.first, let lastTime = time.last, lastTime - firstTime > settings.preWindow + settings.postWindow + 0.1
+        else { return nil }
         let dt = median(zip(time.dropFirst(), time).map(-))
         let relativeGrid = stride(from: -settings.preWindow, through: settings.postWindow + dt / 2, by: dt).map { $0 }
         let valid = beatTimes.filter { beat in
@@ -26,7 +27,7 @@ enum SignalAnalysis {
             return accelNoise <= settings.accelMotionThreshold && gyroNoise <= settings.gyroMotionThreshold
         }
         let channels: [(String, (SensorSample) -> Double)] = [
-            ("X", { $0.magX }), ("Y", { $0.magY }), ("Z", { $0.magZ }), ("|B|", { $0.magMagnitude })
+            ("X", { $0.magX }), ("Y", { $0.magY }), ("Z", { $0.magZ }), ("|B|", { $0.magMagnitude }),
         ]
         var rng = SeededGenerator(state: settings.seed)
         let results = channels.compactMap { name, channel -> AxisResult? in
@@ -34,34 +35,52 @@ enum SignalAnalysis {
             guard epochs.count >= 4 else { return nil }
             let mean = columnMean(epochs)
             let (low, high) = bootstrapCI(epochs: epochs, count: settings.bootstrapCount, rng: &rng)
-            let responseIndices = relativeGrid.indices.filter { relativeGrid[$0] >= settings.responseStart && relativeGrid[$0] <= settings.responseEnd }
+            let responseIndices = relativeGrid.indices.filter {
+                relativeGrid[$0] >= settings.responseStart && relativeGrid[$0] <= settings.responseEnd
+            }
             let realRMS = rms(responseIndices.map { mean[$0] })
             var circularNullRMS: [Double] = []
             var shuffledNullRMS: [Double] = []
             let duration = (time.last ?? 0) - (time.first ?? 0)
             for _ in 0..<settings.surrogateCount {
-                let shift = Double.random(in: settings.postWindow..<(max(settings.postWindow + 0.01, duration - settings.preWindow)), using: &rng)
+                let shift = Double.random(
+                    in: settings.postWindow..<(max(settings.postWindow + 0.01, duration - settings.preWindow)), using: &rng)
                 let shifted = valid.map { (time.first ?? 0) + (($0 - (time.first ?? 0) + shift).truncatingRemainder(dividingBy: duration)) }
-                let nullEpochs = extractEpochs(samples: samples, beatTimes: shifted, grid: relativeGrid, channel: channel, settings: settings)
+                let nullEpochs = extractEpochs(
+                    samples: samples, beatTimes: shifted, grid: relativeGrid, channel: channel, settings: settings)
                 if !nullEpochs.isEmpty { circularNullRMS.append(rms(responseIndices.map { columnMean(nullEpochs)[$0] })) }
                 let intervals = zip(valid.dropFirst(), valid).map(-).shuffled(using: &rng)
                 var shuffled = [valid[0]]
                 for interval in intervals { shuffled.append(shuffled.last! + interval) }
-                let shuffledEpochs = extractEpochs(samples: samples, beatTimes: shuffled, grid: relativeGrid, channel: channel, settings: settings)
+                let shuffledEpochs = extractEpochs(
+                    samples: samples, beatTimes: shuffled, grid: relativeGrid, channel: channel, settings: settings)
                 if !shuffledEpochs.isEmpty { shuffledNullRMS.append(rms(responseIndices.map { columnMean(shuffledEpochs)[$0] })) }
             }
             let circularP = Double(1 + circularNullRMS.filter { $0 >= realRMS }.count) / Double(circularNullRMS.count + 1)
             let shuffledP = Double(1 + shuffledNullRMS.filter { $0 >= realRMS }.count) / Double(shuffledNullRMS.count + 1)
-            return AxisResult(id: name, axis: name, times: relativeGrid, mean: mean, lowerCI: low, upperCI: high, rms: realRMS, empiricalP: max(circularP, shuffledP), shuffledP: shuffledP, circularP: circularP, oddEvenCorrelation: splitCorrelation(epochs: epochs, selector: { $0 % 2 == 0 }), halfCorrelation: splitCorrelation(epochs: epochs, selector: { $0 < epochs.count / 2 }))
+            return AxisResult(
+                id: name, axis: name, times: relativeGrid, mean: mean, lowerCI: low, upperCI: high, rms: realRMS,
+                empiricalP: max(circularP, shuffledP), shuffledP: shuffledP, circularP: circularP,
+                oddEvenCorrelation: splitCorrelation(epochs: epochs, selector: { $0 % 2 == 0 }),
+                halfCorrelation: splitCorrelation(epochs: epochs, selector: { $0 < epochs.count / 2 }))
         }
         let heldOut = heldOutTemplateCorrelation(samples: samples, beatTimes: valid, settings: settings)
         let contaminated = valid.count < max(4, beatTimes.count / 2)
         let bestP = results.map(\.empiricalP).min() ?? 1
-        let conclusion = contaminated ? "result likely contaminated by motion" : (bestP <= 0.0125 && heldOut > 0.2 ? "heartbeat-correlated component detected; replication and controls required" : "no component detected above current noise/control threshold")
-        return AnalysisReport(axisResults: results, validBeats: valid.count, rejectedBeats: beatTimes.count - valid.count, heldOutCorrelation: heldOut, motionContaminated: contaminated, conclusion: conclusion)
+        let conclusion =
+            contaminated
+            ? "result likely contaminated by motion"
+            : (bestP <= 0.0125 && heldOut > 0.2
+                ? "heartbeat-correlated component detected; replication and controls required"
+                : "no component detected above current noise/control threshold")
+        return AnalysisReport(
+            axisResults: results, validBeats: valid.count, rejectedBeats: beatTimes.count - valid.count, heldOutCorrelation: heldOut,
+            motionContaminated: contaminated, conclusion: conclusion)
     }
 
-    static func extractEpochs(samples: [SensorSample], beatTimes: [Double], grid: [Double], channel: (SensorSample) -> Double, settings: AnalysisSettings) -> [[Double]] {
+    static func extractEpochs(
+        samples: [SensorSample], beatTimes: [Double], grid: [Double], channel: (SensorSample) -> Double, settings: AnalysisSettings
+    ) -> [[Double]] {
         guard samples.count > 1 else { return [] }
         let times = samples.map(\.monotonicTime)
         return beatTimes.compactMap { beat in
@@ -83,7 +102,9 @@ enum SignalAnalysis {
 
     static func circularShift(times: [Double], start: Double, end: Double, offset: Double) -> [Double] {
         let duration = end - start
-        return times.map { start + (($0 - start + offset).truncatingRemainder(dividingBy: duration) + duration).truncatingRemainder(dividingBy: duration) }.sorted()
+        return times.map {
+            start + (($0 - start + offset).truncatingRemainder(dividingBy: duration) + duration).truncatingRemainder(dividingBy: duration)
+        }.sorted()
     }
 
     static func heldOutTemplateCorrelation(samples: [SensorSample], beatTimes: [Double], settings: AnalysisSettings) -> Double {
@@ -91,15 +112,21 @@ enum SignalAnalysis {
         let split = beatTimes.count / 2
         let dt = median(zip(samples.dropFirst().map(\.monotonicTime), samples.map(\.monotonicTime)).map(-))
         let grid = stride(from: -settings.preWindow, through: settings.postWindow, by: dt).map { $0 }
-        let train = extractEpochs(samples: samples, beatTimes: Array(beatTimes[..<split]), grid: grid, channel: { $0.magX }, settings: settings)
-        let test = extractEpochs(samples: samples, beatTimes: Array(beatTimes[split...]), grid: grid, channel: { $0.magX }, settings: settings)
+        let train = extractEpochs(
+            samples: samples, beatTimes: Array(beatTimes[..<split]), grid: grid, channel: { $0.magX }, settings: settings)
+        let test = extractEpochs(
+            samples: samples, beatTimes: Array(beatTimes[split...]), grid: grid, channel: { $0.magX }, settings: settings)
         guard !train.isEmpty, !test.isEmpty else { return 0 }
         return correlation(columnMean(train), columnMean(test))
     }
 
     static func interpolate(times: [Double], values: [Double], at t: Double) -> Double {
-        var low = 0, high = times.count - 1
-        while high - low > 1 { let mid = (low + high) / 2; if times[mid] <= t { low = mid } else { high = mid } }
+        var low = 0
+        var high = times.count - 1
+        while high - low > 1 {
+            let mid = (low + high) / 2
+            if times[mid] <= t { low = mid } else { high = mid }
+        }
         let f = (t - times[low]) / max(times[high] - times[low], .leastNonzeroMagnitude)
         return values[low] + f * (values[high] - values[low])
     }
@@ -128,11 +155,16 @@ enum SignalAnalysis {
 
     static func correlation(_ a: [Double], _ b: [Double]) -> Double {
         guard a.count == b.count, !a.isEmpty else { return 0 }
-        let ma = a.reduce(0, +) / Double(a.count), mb = b.reduce(0, +) / Double(b.count)
-        let aa = a.map { $0 - ma }, bb = b.map { $0 - mb }
+        let ma = a.reduce(0, +) / Double(a.count)
+        let mb = b.reduce(0, +) / Double(b.count)
+        let aa = a.map { $0 - ma }
+        let bb = b.map { $0 - mb }
         let den = sqrt(aa.map { $0 * $0 }.reduce(0, +) * bb.map { $0 * $0 }.reduce(0, +))
         return den == 0 ? 0 : zip(aa, bb).map(*).reduce(0, +) / den
     }
     static func rms(_ values: [Double]) -> Double { sqrt(values.map { $0 * $0 }.reduce(0, +) / Double(max(values.count, 1))) }
-    static func median(_ values: [Double]) -> Double { let s = values.sorted(); return s.isEmpty ? 0.02 : s[s.count / 2] }
+    static func median(_ values: [Double]) -> Double {
+        let s = values.sorted()
+        return s.isEmpty ? 0.02 : s[s.count / 2]
+    }
 }

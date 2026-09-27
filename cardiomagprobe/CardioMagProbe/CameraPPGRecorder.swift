@@ -14,7 +14,10 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
     func requestAndStart() {
         AVCaptureDevice.requestAccess(for: .video) { [weak self] granted in
-            guard granted else { self?.onStatus?("Camera denied — use manual beat markers or import timestamps."); return }
+            guard granted else {
+                self?.onStatus?("Camera denied — use manual beat markers or import timestamps.")
+                return
+            }
             self?.queue.async { self?.configureAndStart() }
         }
     }
@@ -24,15 +27,21 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         session.beginConfiguration()
         session.sessionPreset = .low
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
-              let input = try? AVCaptureDeviceInput(device: camera), session.canAddInput(input) else {
-            session.commitConfiguration(); onStatus?("Rear camera unavailable — PPG disabled."); return
+            let input = try? AVCaptureDeviceInput(device: camera), session.canAddInput(input)
+        else {
+            session.commitConfiguration()
+            onStatus?("Rear camera unavailable — PPG disabled.")
+            return
         }
         session.addInput(input)
         let output = AVCaptureVideoDataOutput()
         output.alwaysDiscardsLateVideoFrames = true
         output.videoSettings = [kCVPixelBufferPixelFormatTypeKey as String: kCVPixelFormatType_32BGRA]
         output.setSampleBufferDelegate(self, queue: queue)
-        guard session.canAddOutput(output) else { session.commitConfiguration(); return }
+        guard session.canAddOutput(output) else {
+            session.commitConfiguration()
+            return
+        }
         session.addOutput(output)
         session.commitConfiguration()
         try? camera.lockForConfiguration()
@@ -46,7 +55,9 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         queue.async { [weak self] in
             self?.session.stopRunning()
             if let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back), camera.hasTorch {
-                try? camera.lockForConfiguration(); camera.torchMode = .off; camera.unlockForConfiguration()
+                try? camera.lockForConfiguration()
+                camera.torchMode = .off
+                camera.unlockForConfiguration()
             }
         }
     }
@@ -60,9 +71,12 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         let extent = image.extent
         let vector = CIVector(x: extent.minX, y: extent.minY, z: extent.width, w: extent.height)
         guard let filter = CIFilter(name: "CIAreaAverage", parameters: [kCIInputImageKey: image, kCIInputExtentKey: vector]),
-              let out = filter.outputImage else { return }
+            let out = filter.outputImage
+        else { return }
         var pixel = [UInt8](repeating: 0, count: 4)
-        context.render(out, toBitmap: &pixel, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8, colorSpace: CGColorSpaceCreateDeviceRGB())
+        context.render(
+            out, toBitmap: &pixel, rowBytes: 4, bounds: CGRect(x: 0, y: 0, width: 1, height: 1), format: .RGBA8,
+            colorSpace: CGColorSpaceCreateDeviceRGB())
         let red = Double(pixel[0]) / 255
         recent.append((timestamp, red))
         recent.removeAll { timestamp - $0.0 > 8 }
@@ -84,7 +98,10 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         let raw = recent.suffix(10).map(\.1)
         let mean = raw.reduce(0, +) / Double(raw.count)
         let rising = raw.last! > mean && raw.last! > raw[raw.count - 2]
-        if value > 0.8 && rising { lastBeat = time; return true }
+        if value > 0.8 && rising {
+            lastBeat = time
+            return true
+        }
         return false
     }
 }

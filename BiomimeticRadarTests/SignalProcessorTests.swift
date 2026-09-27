@@ -1,15 +1,16 @@
 import XCTest
 #if canImport(BiomimeticRadar)
-@testable import BiomimeticRadar
+    @testable import BiomimeticRadar
 #else
-@testable import BiomimeticRadarCore
+    @testable import BiomimeticRadarCore
 #endif
 
 final class SignalProcessorTests: XCTestCase {
     private let processor = SignalProcessor()
 
     func testSyntheticNoisySineRecovery() {
-        let rate = 50.0, frequency = 8.3
+        let rate = 50.0
+        let frequency = 8.3
         let signal = (0..<5_000).map { index -> Double in
             let time = Double(index) / rate
             let target = 0.08 * sin(2.0 * Double.pi * frequency * time)
@@ -22,7 +23,9 @@ final class SignalProcessorTests: XCTestCase {
     }
 
     func testPhaseDetection() {
-        let rate = 100.0, frequency = 4.0, phase = 0.7
+        let rate = 100.0
+        let frequency = 4.0
+        let phase = 0.7
         let signal = (0..<2_000).map { index in cos(2 * .pi * frequency * Double(index) / rate - phase) }
         let result = processor.lockIn(signal: signal, sampleRate: rate, frequency: frequency)
         XCTAssertEqual(result.phaseRadians, phase, accuracy: 0.02)
@@ -30,8 +33,9 @@ final class SignalProcessorTests: XCTestCase {
 
     func testMatchedFilterRecoversKnownLag() {
         let rate = 50.0
-        let reference = processor.codedReference(count: 2_000, sampleRate: rate, carrierHz: 8.3,
-                                                 code: [1, 1, 1, -1, -1, 1, -1], chipDuration: 0.25)
+        let reference = processor.codedReference(
+            count: 2_000, sampleRate: rate, carrierHz: 8.3,
+            code: [1, 1, 1, -1, -1, 1, -1], chipDuration: 0.25)
         let lag = 17
         let signal = Array(repeating: 0.0, count: lag) + Array(reference.dropLast(lag))
         let result = processor.matchedFilter(signal: signal, reference: reference, shuffleCount: 150)
@@ -69,7 +73,8 @@ extension SignalProcessorTests {
     /// `1 − exp(−(A/N)²·n/4)` that was being Benjamini–Hochberg corrected beside a genuine
     /// permutation p-value — two numbers on different scales in one correction.
     func testLockInPValueIsAnFTestAndBehavesLikeOne() {
-        let rate = 100.0, n = 4000
+        let rate = 100.0
+        let n = 4000
         var generator = SeededGenerator(seed: 11)
         let noise = (0..<n).map { _ in Double.random(in: -1...1, using: &generator) }
         let quiet = SignalProcessor().lockIn(signal: noise, sampleRate: rate, frequency: 8.3)
@@ -89,7 +94,9 @@ extension SignalProcessorTests {
     /// lock-in that uses the true sample instants recovers more amplitude than the one assuming a
     /// uniform grid.
     func testTimestampCorrectionRecoversAmplitudeAJitteringClockLoses() {
-        let nominal = 100.0, n = 6000, frequency = 8.3
+        let nominal = 100.0
+        let n = 6000
+        let frequency = 8.3
         var generator = SeededGenerator(seed: 5)
         var times: [Double] = []
         var t = 0.0
@@ -101,16 +108,20 @@ extension SignalProcessorTests {
         let processor = SignalProcessor()
         let rate = processor.estimatedSampleRate(times: times, fallback: nominal)
         let assumed = processor.lockIn(signal: signal, sampleRate: rate, frequency: frequency)
-        let corrected = processor.lockIn(signal: signal, sampleRate: rate, frequency: frequency,
-                                         times: times.map { $0 - times[0] })
+        let corrected = processor.lockIn(
+            signal: signal, sampleRate: rate, frequency: frequency,
+            times: times.map { $0 - times[0] })
         XCTAssertEqual(corrected.amplitude, 1.0, accuracy: 0.05)
-        XCTAssertLessThan(assumed.amplitude, corrected.amplitude * 0.8,
-                          "an assumed uniform clock should lose amplitude to jitter; if it does not, this test is not exercising jitter")
+        XCTAssertLessThan(
+            assumed.amplitude, corrected.amplitude * 0.8,
+            "an assumed uniform clock should lose amplitude to jitter; if it does not, this test is not exercising jitter")
     }
 
     /// Harmonics separate a linear carrier from a mechanical or switching artefact at the same rate.
     func testHarmonicsSeparateACleanCarrierFromASquareOne() {
-        let rate = 100.0, n = 4000, frequency = 8.3
+        let rate = 100.0
+        let n = 4000
+        let frequency = 8.3
         let clean = (0..<n).map { sin(2 * .pi * frequency * Double($0) / rate) }
         let square = (0..<n).map { sin(2 * .pi * frequency * Double($0) / rate) >= 0 ? 1.0 : -1.0 }
         let processor = SignalProcessor()
@@ -123,9 +134,10 @@ extension SignalProcessorTests {
     /// Phase tracking is the cheapest way to tell the phone's own emission from the world: a source
     /// sharing the sample clock does not drift, and everything external does.
     func testPhaseDoesNotDriftForASourceLockedToTheSampleClock() {
-        let rate = 100.0, n = 6000
+        let rate = 100.0
+        let n = 6000
         let locked = (0..<n).map { sin(2 * .pi * 8.0 * Double($0) / rate) }
-        let offset = (0..<n).map { sin(2 * .pi * 8.02 * Double($0) / rate) }   // 0.02 Hz adrift
+        let offset = (0..<n).map { sin(2 * .pi * 8.02 * Double($0) / rate) }  // 0.02 Hz adrift
         let processor = SignalProcessor()
         let lockedTrace = processor.phaseTrace(locked, sampleRate: rate, frequency: 8.0)
         let driftTrace = processor.phaseTrace(offset, sampleRate: rate, frequency: 8.0)
@@ -139,7 +151,7 @@ extension SignalProcessorTests {
     /// phase-stable across code periods shows up as a shortfall rather than as a gain.
     func testCoherentAveragingReportsAchievedVersusIdealGain() {
         let rate = 100.0
-        let period = 1.75                                        // 7 chips at 0.25 s
+        let period = 1.75  // 7 chips at 0.25 s
         let n = Int(rate * period * 20)
         var generator = SeededGenerator(seed: 3)
         let stable = (0..<n).map { index -> Double in
@@ -148,7 +160,7 @@ extension SignalProcessorTests {
         }
         let processor = SignalProcessor()
         let report = processor.coherentAveragingReport(stable, sampleRate: rate, periodSeconds: period)
-        XCTAssertEqual(report.epochs, 19)                        // 20 recorded, first dropped for filter settling
+        XCTAssertEqual(report.epochs, 19)  // 20 recorded, first dropped for filter settling
         XCTAssertGreaterThan(report.idealGainDB, 12)
         XCTAssertGreaterThan(report.achievedGainDB, 0)
         XCTAssertFalse(report.note.isEmpty)
@@ -162,9 +174,10 @@ extension SignalProcessorTests {
     /// because the first-epoch RMS was huge and the averaged mean was near zero. Now it is either a
     /// modest number or flagged, but never above the ceiling.
     func testAveragingRefusesToBeatRootN() {
-        let rate = 100.0, period = 1.75
+        let rate = 100.0
+        let period = 1.75
         let n = Int(rate * period * 12)
-        let drift = (0..<n).map { Double($0) / Double(n) * 100 }        // a ramp: all drift, no signal, no noise
+        let drift = (0..<n).map { Double($0) / Double(n) * 100 }  // a ramp: all drift, no signal, no noise
         let report = SignalProcessor().coherentAveragingReport(drift, sampleRate: rate, periodSeconds: period)
         XCTAssertLessThanOrEqual(report.achievedGainDB, report.idealGainDB + 1e-9)
     }
@@ -177,25 +190,30 @@ extension SignalProcessorTests {
         plan.sampleRateHz = rate
         plan.durationSeconds = 40
         plan.targetFrequencyHz = 8.3
-        let reference = SignalProcessor().codedReference(count: 4000, sampleRate: rate, carrierHz: 8.3,
-                                                         code: plan.code, chipDuration: plan.chipDurationSeconds)
+        let reference = SignalProcessor().codedReference(
+            count: 4000, sampleRate: rate, carrierHz: 8.3,
+            code: plan.code, chipDuration: plan.chipDurationSeconds)
         // Realistic wall times (span == monotonic span) and a healthy 48 µT baseline, so the data
         // gates PASS and the tier is decided by the detection alone.
         let base = 1_756_000_000.0
         let samples = reference.enumerated().map { index, value in
-            SensorSample(monotonicTime: Double(index) / rate, wallTime: Date(timeIntervalSince1970: base + Double(index) / rate),
-                         magnetic: Vector3(x: 48 + 0.5 * value, y: 0, z: 0))
+            SensorSample(
+                monotonicTime: Double(index) / rate, wallTime: Date(timeIntervalSince1970: base + Double(index) / rate),
+                magnetic: Vector3(x: 48 + 0.5 * value, y: 0, z: 0))
         }
-        let started = Date(timeIntervalSince1970: base), ended = Date(timeIntervalSince1970: base + 40)
-        let external = SignalProcessor().analyze(samples: samples, protocol: plan, shuffleCount: 60,
-                                                 startedAt: started, endedAt: ended)
+        let started = Date(timeIntervalSince1970: base)
+        let ended = Date(timeIntervalSince1970: base + 40)
+        let external = SignalProcessor().analyze(
+            samples: samples, protocol: plan, shuffleCount: 60,
+            startedAt: started, endedAt: ended)
         XCTAssertTrue(external.passedNullControls)
         XCTAssertFalse(external.gates.blocks, "the synthetic record must clear every data gate")
         XCTAssertEqual(external.resultTier, .significant)
 
-        let selfEmitted = SignalProcessor().analyze(samples: samples, protocol: plan,
-                                                    shuffleCount: 60, emitterRunning: true,
-                                                    startedAt: started, endedAt: ended)
+        let selfEmitted = SignalProcessor().analyze(
+            samples: samples, protocol: plan,
+            shuffleCount: 60, emitterRunning: true,
+            startedAt: started, endedAt: ended)
         XCTAssertTrue(selfEmitted.passedNullControls, "the detection is real — of our own emission")
         XCTAssertEqual(selfEmitted.resultTier, .exploratory, "and it may never be reported as significant")
         XCTAssertTrue(selfEmitted.warnings.contains { $0.contains(EmitterSchedule.stamp) })
@@ -218,8 +236,9 @@ extension SignalProcessorTests {
         plan.processing.lowCutoffHz = 7.8
         plan.processing.highCutoffHz = 8.8
         let samples = (0..<2000).map { index in
-            SensorSample(monotonicTime: Double(index) / 100, wallTime: Date(),
-                         magnetic: Vector3(x: 48, y: 0, z: 0))
+            SensorSample(
+                monotonicTime: Double(index) / 100, wallTime: Date(),
+                magnetic: Vector3(x: 48, y: 0, z: 0))
         }
         let result = processor.analyze(samples: samples, protocol: plan, shuffleCount: 20)
         XCTAssertTrue(result.warnings.contains { $0.contains("removing the code") }, "\(result.warnings)")
@@ -230,9 +249,10 @@ extension SignalProcessorTests {
     func testRepresentationChoiceChangesWhatIsAnalysed() {
         let samples = (0..<600).map { index -> SensorSample in
             let angle = 2 * Double.pi * 0.5 * Double(index) / 100
-            return SensorSample(monotonicTime: Double(index) / 100, wallTime: Date(),
-                                magnetic: Vector3(x: 48 * cos(angle), y: 48 * sin(angle), z: 0),
-                                attitude: Quaternion(x: 0, y: 0, z: sin(angle / 2), w: cos(angle / 2)))
+            return SensorSample(
+                monotonicTime: Double(index) / 100, wallTime: Date(),
+                magnetic: Vector3(x: 48 * cos(angle), y: 48 * sin(angle), z: 0),
+                attitude: Quaternion(x: 0, y: 0, z: sin(angle / 2), w: cos(angle / 2)))
         }
         let processor = SignalProcessor()
         let magnitude = processor.channel(.magnitude, from: samples)

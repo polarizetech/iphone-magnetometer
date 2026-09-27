@@ -36,7 +36,9 @@ final class StreamUploader: NSObject, ObservableObject {
     var onFailed: ((URL, String) -> Void)?
 
     private var session: URLSession!
-    private var responseBodies: [Int: Data] = [:]
+    /// Filled on the session's delegate queue and read there on completion, so the body is always
+    /// complete before `completed` runs. Two separate main-actor hops could arrive in either order.
+    private nonisolated let responseBodies = ResponseBodies()
     private var backgroundCompletion: (() -> Void)?
 
     private override init() {
@@ -90,13 +92,9 @@ final class StreamUploader: NSObject, ObservableObject {
 
     // MARK: - delegate plumbing (hops to the main actor)
 
-    fileprivate func received(data: Data, taskIdentifier: Int) {
-        responseBodies[taskIdentifier, default: Data()].append(data)
-    }
-
-    fileprivate func completed(task: URLSessionTask, error: Error?) {
-        let name = task.taskDescription ?? ""
-        let body = responseBodies.removeValue(forKey: task.taskIdentifier)
+    fileprivate func completed(task: URLSessionTask, body: Data?, error: Error?) {
+        // An empty name resolves to the spool directory itself, and an ack would delete all of it.
+        guard let name = task.taskDescription, !name.isEmpty else { return }
         inFlight.remove(name)
         let file = StreamSpool.directory.appendingPathComponent(name)
         let status = (task.response as? HTTPURLResponse)?.statusCode ?? 0
@@ -107,7 +105,9 @@ final class StreamUploader: NSObject, ObservableObject {
             return
         }
         let ack = body.flatMap { try? JSONDecoder().decode(StreamAck.self, from: $0) }
-        if (200..<300).contains(status) {
+        // Only this server's own ack releases a chunk. A proxy or captive portal answering 200 with a
+        // page of HTML would otherwise delete the phone's only copy of chunks that never arrived.
+        if (200..<300).contains(status), ack?.ok == true {
             sentChunks += 1
             sentBytes += Int(task.countOfBytesSent)
             lastAck = Date()
@@ -117,8 +117,9 @@ final class StreamUploader: NSObject, ObservableObject {
         } else {
             failedAttempts += 1
             let text = body.map { String(decoding: $0.prefix(200), as: UTF8.self) } ?? ""
-            lastError = "\(name): HTTP \(status) \(text)"
-            onFailed?(file, "HTTP \(status)")
+            let reason = (200..<300).contains(status) ? "HTTP \(status) without a FieldLab ack" : "HTTP \(status)"
+            lastError = "\(name): \(reason) \(text)"
+            onFailed?(file, reason)
         }
     }
 
@@ -142,12 +143,12 @@ struct StreamAck: Codable, Sendable {
 
 extension StreamUploader: URLSessionDelegate, URLSessionDataDelegate, URLSessionTaskDelegate {
     nonisolated func urlSession(_ session: URLSession, dataTask: URLSessionDataTask, didReceive data: Data) {
-        let id = dataTask.taskIdentifier
-        Task { @MainActor in self.received(data: data, taskIdentifier: id) }
+        responseBodies.append(data, for: dataTask.taskIdentifier)
     }
 
     nonisolated func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        Task { @MainActor in self.completed(task: task, error: error) }
+        let body = responseBodies.take(task.taskIdentifier)
+        Task { @MainActor in self.completed(task: task, body: body, error: error) }
     }
 
     nonisolated func urlSessionDidFinishEvents(forBackgroundURLSession session: URLSession) {
@@ -200,4 +201,23 @@ enum StreamSpool {
     }
 
     static func remove(_ url: URL) { try? FileManager.default.removeItem(at: url) }
+}
+
+/// Response bodies by task, touched only from URLSession's serial delegate queue; the lock makes that
+/// safe to state to the compiler.
+private final class ResponseBodies: @unchecked Sendable {
+    private let lock = NSLock()
+    private var bodies: [Int: Data] = [:]
+
+    func append(_ data: Data, for task: Int) {
+        lock.lock()
+        defer { lock.unlock() }
+        bodies[task, default: Data()].append(data)
+    }
+
+    func take(_ task: Int) -> Data? {
+        lock.lock()
+        defer { lock.unlock() }
+        return bodies.removeValue(forKey: task)
+    }
 }

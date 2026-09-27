@@ -1,8 +1,8 @@
 import XCTest
 #if canImport(BiomimeticRadar)
-@testable import BiomimeticRadar
+    @testable import BiomimeticRadar
 #else
-@testable import BiomimeticRadarCore
+    @testable import BiomimeticRadarCore
 #endif
 
 /// The band registry, the nested-signal test, the reference-signal catalogue and the emitter.
@@ -14,10 +14,12 @@ final class BandAndCouplingTests: XCTestCase {
 
     func testELFBandsComeFirstAndNothingIsExcludedByDefault() {
         XCTAssertFalse(BandRegistry.elf.isEmpty)
-        XCTAssertTrue(BandRegistry.elf.allSatisfy { $0.highHz <= 40 },
-                      "the ELF set is 0–40 Hz; anything above belongs to the anthropogenic ranks")
-        XCTAssertTrue(BandRegistry.bands.allSatisfy { $0.defaultPolicy != .excluded },
-                      "no band may start life excluded — that decision is the operator's")
+        XCTAssertTrue(
+            BandRegistry.elf.allSatisfy { $0.highHz <= 40 },
+            "the ELF set is 0–40 Hz; anything above belongs to the anthropogenic ranks")
+        XCTAssertTrue(
+            BandRegistry.bands.allSatisfy { $0.defaultPolicy != .excluded },
+            "no band may start life excluded — that decision is the operator's")
         // The bands the project is actually about are all present.
         for id in ["schumann-1", "pc1", "cardiac", "human-alpha", "mains-60"] {
             XCTAssertNotNil(BandRegistry.band(id), "missing band \(id)")
@@ -28,8 +30,9 @@ final class BandAndCouplingTests: XCTestCase {
     func testEveryBandStatesItsExpectedAmplitudeWithATier() {
         for band in BandRegistry.bands {
             XCTAssertFalse(band.origin.isEmpty, "\(band.id) has no stated origin")
-            XCTAssertTrue(band.expectedAmplitude.contains("["),
-                          "\(band.id)'s expected amplitude carries no evidence tier")
+            XCTAssertTrue(
+                band.expectedAmplitude.contains("["),
+                "\(band.id)'s expected amplitude carries no evidence tier")
         }
     }
 
@@ -55,8 +58,9 @@ final class BandAndCouplingTests: XCTestCase {
         XCTAssertGreaterThanOrEqual(advice.rate, 40)
         for band in BandRegistry.bands where band.family == .anthropogenic {
             let apparent = SignalCensus.aliasOf(band.centreHz, sampleRateHz: advice.rate)
-            XCTAssertGreaterThan(abs(apparent - 8.3), 4,
-                                 "\(band.label) lands too close to the target at the recommended rate")
+            XCTAssertGreaterThan(
+                abs(apparent - 8.3), 4,
+                "\(band.label) lands too close to the target at the recommended rate")
         }
     }
 
@@ -69,7 +73,8 @@ final class BandAndCouplingTests: XCTestCase {
     /// that is what a real slow field does and because phase-amplitude coupling needs it: a
     /// modulator visible only as sidebands leaves nothing to take a phase reference from.
     func testAPlantedNestedSignalIsFound() {
-        let rate = 100.0, n = 8192
+        let rate = 100.0
+        let n = 8192
         // The modulator is three incommensurate tones inside the cardiac band rather than one.
         // A strictly periodic modulator inflates the circular-shift null — shifting it often
         // re-aligns it with itself — which is the same mechanism the offline epoch test found for
@@ -77,9 +82,10 @@ final class BandAndCouplingTests: XCTestCase {
         // and the difference is measured: 3.4 null SD for a single tone, >6 for this.
         let signal = (0..<n).map { index -> Double in
             let t = Double(index) / rate
-            let modulator: Double = (sin(2 * .pi * 1.30 * t)
-                                     + sin(2 * .pi * 0.91 * t + 1.0)
-                                     + sin(2 * .pi * 2.17 * t + 2.0)) / 3
+            let modulator: Double =
+                (sin(2 * .pi * 1.30 * t)
+                    + sin(2 * .pi * 0.91 * t + 1.0)
+                    + sin(2 * .pi * 2.17 * t + 2.0)) / 3
             let envelope: Double = 1 + 0.8 * modulator
             return envelope * sin(2 * .pi * 60.0 * t) + 0.5 * modulator
         }
@@ -89,8 +95,9 @@ final class BandAndCouplingTests: XCTestCase {
         XCTAssertTrue(result.admissible, result.verdict)
         XCTAssertGreaterThan(try XCTUnwrap(result.effectInNullSD), 4, result.verdict)
         XCTAssertLessThan(try XCTUnwrap(result.pValue), 0.02, result.verdict)
-        XCTAssertGreaterThan(try XCTUnwrap(result.modulatorAmplitude), 0.1,
-                             "the modulator has to be present for its phase to mean anything")
+        XCTAssertGreaterThan(
+            try XCTUnwrap(result.modulatorAmplitude), 0.1,
+            "the modulator has to be present for its phase to mean anything")
         // It must also say that the carrier it measured was folded, because it was.
         XCTAssertTrue(result.verdict.contains("folded"), result.verdict)
     }
@@ -98,7 +105,8 @@ final class BandAndCouplingTests: XCTestCase {
     /// The same carrier with no modulation returns nothing — and specifically returns NO effect
     /// size, because a z-score against a null with no width is a big number made of nothing.
     func testAnUnmodulatedCarrierReturnsNothing() {
-        let rate = 100.0, n = 8192
+        let rate = 100.0
+        let n = 8192
         let signal = (0..<n).map { index -> Double in
             let t = Double(index) / rate
             return sin(2 * .pi * 60.0 * t) + 0.5 * sin(2 * .pi * 1.3 * t)
@@ -130,21 +138,24 @@ final class BandAndCouplingTests: XCTestCase {
     /// Pairing is driven by the policies, so the operator's toggles decide what is tested.
     func testPolicyDecidesWhichPairsAreTried() {
         var policies = BandRegistry.defaultPolicies
-        XCTAssertFalse(CrossBandCoupling.pairs(policies: policies).isEmpty,
-                       "mains defaults to CARRIER, so pairs exist out of the box")
+        XCTAssertFalse(
+            CrossBandCoupling.pairs(policies: policies).isEmpty,
+            "mains defaults to CARRIER, so pairs exist out of the box")
         for id in policies.keys where policies[id] == .carrier { policies[id] = .context }
-        XCTAssertTrue(CrossBandCoupling.pairs(policies: policies).isEmpty,
-                      "with no carrier declared there is nothing to nest in")
+        XCTAssertTrue(
+            CrossBandCoupling.pairs(policies: policies).isEmpty,
+            "with no carrier declared there is nothing to nest in")
     }
 
     // MARK: - reference signals
 
     /// The catalogue's job is to be honest about what cannot be seen, not to be encouraging.
     func testReferenceCatalogueIsHonestAboutReach() {
-        let floor = 0.15   // µT — a plausible phone magnetometer floor
-        let assessments = Dictionary(uniqueKeysWithValues: ReferenceSignals.sources.map {
-            ($0.id, ReferenceSignals.assess($0, sampleRateHz: 100, noiseFloorMicrotesla: floor))
-        })
+        let floor = 0.15  // µT — a plausible phone magnetometer floor
+        let assessments = Dictionary(
+            uniqueKeysWithValues: ReferenceSignals.sources.map {
+                ($0.id, ReferenceSignals.assess($0, sampleRateHz: 100, noiseFloorMicrotesla: floor))
+            })
         XCTAssertEqual(assessments["schumann"]?.reach, .outOfReach)
         XCTAssertEqual(assessments["pc1"]?.reach, .outOfReach)
         XCTAssertEqual(assessments["vlf-transmitters"]?.reach, .outOfReach)
@@ -171,11 +182,13 @@ final class BandAndCouplingTests: XCTestCase {
     /// The emitter's drive IS the matched filter's reference, so a detection is a detection of the
     /// thing being searched for rather than of something adjacent.
     func testEmitterDriveMatchesTheMatchedFilterReference() {
-        let schedule = EmitterSchedule(transducer: .haptics, carrierHz: 8.3,
-                                       code: [1, 1, 1, -1, -1, 1, -1], chipSeconds: 0.25, amplitude: 1.0)
+        let schedule = EmitterSchedule(
+            transducer: .haptics, carrierHz: 8.3,
+            code: [1, 1, 1, -1, -1, 1, -1], chipSeconds: 0.25, amplitude: 1.0)
         let rate = 100.0
-        let reference = SignalProcessor().codedReference(count: 500, sampleRate: rate, carrierHz: 8.3,
-                                                         code: [1, 1, 1, -1, -1, 1, -1], chipDuration: 0.25)
+        let reference = SignalProcessor().codedReference(
+            count: 500, sampleRate: rate, carrierHz: 8.3,
+            code: [1, 1, 1, -1, -1, 1, -1], chipDuration: 0.25)
         for index in 0..<500 {
             XCTAssertEqual(schedule.drive(at: Double(index) / rate), reference[index], accuracy: 1e-12)
         }
@@ -202,7 +215,8 @@ final class BandAndCouplingTests: XCTestCase {
 
     func testRequiredAmplitudeNeedsAMeasuredFloor() {
         XCTAssertNil(EmitterSchedule.requiredAmplitudeMicrotesla(noiseFloorMicrotesla: nil))
-        XCTAssertEqual(try XCTUnwrap(EmitterSchedule.requiredAmplitudeMicrotesla(noiseFloorMicrotesla: 0.2)),
-                       0.6, accuracy: 1e-9)
+        XCTAssertEqual(
+            try XCTUnwrap(EmitterSchedule.requiredAmplitudeMicrotesla(noiseFloorMicrotesla: 0.2)),
+            0.6, accuracy: 1e-9)
     }
 }
