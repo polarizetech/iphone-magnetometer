@@ -21,47 +21,13 @@ from dataclasses import dataclass
 from pathlib import Path
 
 def _find_swift() -> Path:
-    """Locate BandRegistry.swift, which is the single source of truth for the band catalogue.
+    """BandRegistry.swift, the single source of truth for the band catalogue.
 
-    It lived in this entry until 2026-08-24, when the phone apparatus split out into
-    `falsify/unexplained-local-line`. The catalogue stayed with the Swift app because that is where
-    it is authored — so this module now searches both entries rather than assuming a fixed depth,
-    which is the same class of breakage a folder move has caused three times in this repo already.
-
-    There is deliberately **no fallback copy**: a second copy of a catalogue is a catalogue that
-    drifts, and the failure below names where it looked.
+    It is authored in this repo, beside this file. The monorepo's old `bands` modules are shims that
+    load this one, so there is no other layout to search. There is deliberately **no fallback copy**:
+    a second copy of a catalogue is a catalogue that drifts.
     """
-    here = Path(__file__).resolve()
-    rel = Path("BiomimeticRadar") / "Processing" / "BandRegistry.swift"
-    # THIS REPO OWNS THE CATALOGUE, so look beside this file first. The module moved here from
-    # falsify/round-the-world-elf on 2026-08-31 when the recorder became its own repo: the Swift
-    # file is authored in this repo, and a reader that lives somewhere else is a reader that stops
-    # resolving the moment the two are checked out separately. The origin keeps a re-export shim.
-    if (here.parent / rel).is_file():
-        return here.parent / rel
-    # The Swift moved to tools/fieldlab-recorder (now tools/iphone-magnetometer) on 2026-08-24 when the device integration was
-    # split out. Look there first — it is the owner now — before falling back to a search.
-    for root in here.parents:
-        for name in ("iphone-magnetometer", "fieldlab-recorder"):   # renamed 2026-09-15
-            direct = root / "tools" / name / rel
-            if direct.is_file():
-                return direct
-    tried = []
-    for root in here.parents:
-        if not (root / "falsify").is_dir() and root.name != "falsify":
-            candidate = root / rel
-            tried.append(candidate)
-            if candidate.is_file():
-                return candidate
-            continue
-        base = root if root.name == "falsify" else root / "falsify"
-        for entry in sorted(base.iterdir()) if base.is_dir() else []:
-            candidate = entry / rel
-            tried.append(candidate)
-            if candidate.is_file():
-                return candidate
-        break
-    return tried[0] if tried else here.parents[2] / rel
+    return Path(__file__).resolve().parent / "BiomimeticRadar" / "Processing" / "BandRegistry.swift"
 
 
 SWIFT = _find_swift()

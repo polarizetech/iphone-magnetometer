@@ -381,10 +381,11 @@ def census(session, target_hz: float = 8.3, target_bandwidth_hz: float = 1.0,
         fraction = share(target_sel)
         claimed |= target_sel
         host = next((b for b in band_registry.BANDS if b.contains(target_hz)), None)
+        target_prominence = prominence(power, freqs, target_hz, resolution)
         components.append(Component(
             "target", f"Target band · {target_hz:.2f} Hz", "attributed", fraction, amplitude(fraction),
             target_hz, target_bandwidth_hz,
-            prominence(power, freqs, target_hz, resolution),
+            target_prominence,
             half_split_db(ac, rate, target_hz, target_bandwidth_hz / 2),
             "This is where the protocol asked us to look. Power being here is NOT evidence of a "
             "coded signal — a matched filter and its permutation null answer that, not this census."
@@ -392,7 +393,7 @@ def census(session, target_hz: float = 8.3, target_bandwidth_hz: float = 1.0,
             "The coded matched filter. A band with power and no code correlation is something else "
             "in the same band.",
             peak_hz=target_hz,
-            peak_prominence_db=prominence(power, freqs, target_hz, resolution)))
+            peak_prominence_db=target_prominence))
 
     # 2. Every known band. FOLDED BANDS CLAIM FIRST, then ELF priority.
     #

@@ -29,18 +29,11 @@ import numpy as np
 import pandas as pd
 
 
-def _repo_root() -> Path:
-    for c in Path(__file__).resolve().parents:
-        if (c / "tools").is_dir() and (c / "falsify").is_dir():
-            return c
-    raise RuntimeError("monorepo root not found. This sweep uses injrec (tools/injection-recovery), "
-                       "which lives in the audio-projects monorepo; run it from a checkout where "
-                       "this repo is tools/iphone-magnetometer.")
-
-
 HERE = Path(__file__).resolve().parent
-sys.path.insert(0, str(HERE.parents[1]))                 # this repo: store, session
-sys.path.insert(0, str(_repo_root() / "tools" / "injection-recovery"))
+sys.path.insert(0, str(HERE))
+from _monorepo import use_injrec                          # noqa: E402
+
+use_injrec()
 
 import session as sm                                      # noqa: E402
 import store                                              # noqa: E402

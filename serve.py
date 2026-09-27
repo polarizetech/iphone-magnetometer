@@ -67,6 +67,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import math
 import os
 import queue
 import re
@@ -112,7 +113,6 @@ def _analysis_dir() -> Path:
     this server stays stdlib and a missing analysis degrades to a disabled button rather than an
     import error.
     """
-    import os
     env = os.environ.get("FIELDLAB_ANALYSIS")
     if env:
         return Path(env)
@@ -142,6 +142,8 @@ POST_CONTENT_TYPES = ("application/json", CHUNK_CONTENT_TYPE)
 class ChunkConflict(ValueError):
     """A different chunk already holds this seq. The stored one is the only copy, so it is kept."""
 MAX_CHUNK_BYTES = 64 * 1024 * 1024
+MAX_JSON_BYTES = 256 * 1024          # hello, analyze, runbook and register bodies are small JSON
+MAX_RUNNING_JOBS = 2                 # each analysis job may run for up to 30 minutes
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 # The stream CSV's columns, by name. `analysis/fieldlab/session.py` reads these same names.
 CSV_HEADER = ("monotonic_s,wall_clock,mx_uT,my_uT,mz_uT,magnitude_uT,ax_g,ay_g,az_g,"
@@ -217,7 +219,7 @@ class Store:
                     rows.append(json.loads(line))
                 except json.JSONDecodeError:
                     continue  # a torn last line from a crash mid-append; the chunk file is still there
-        # Last writer wins for a seq that was re-sent with different bytes.
+        # One row per seq; a retry after a lost row can log it again (ingest), so keep the last.
         by_seq: dict[int, dict] = {}
         for row in rows:
             by_seq[row["seq"]] = row
@@ -427,15 +429,16 @@ class Store:
                             continue
                         try:
                             t = anchor + float(parts[0])
-                        except ValueError:
+                            mx, my, mz, mag = (float(v) for v in parts[2:6])
+                        except ValueError:          # an empty or garbled field drops the row
                             continue
                         if t < t0 or t > t1:
                             continue
                         cols["t"].append(t)
-                        cols["mx"].append(float(parts[2]))
-                        cols["my"].append(float(parts[3]))
-                        cols["mz"].append(float(parts[4]))
-                        cols["mag"].append(float(parts[5]))
+                        cols["mx"].append(mx)
+                        cols["my"].append(my)
+                        cols["mz"].append(mz)
+                        cols["mag"].append(mag)
         # sort by time across streams (streams do not overlap, but be safe)
         if cols["t"] and any(cols["t"][i] > cols["t"][i + 1] for i in range(len(cols["t"]) - 1)):
             order = sorted(range(len(cols["t"])), key=cols["t"].__getitem__)
@@ -489,14 +492,10 @@ class Store:
 
 # The band catalogue is parsed by `analysis/fieldlab/bands.py` — one parser, imported here rather
 # than a second regex that could drift from it. That module is stdlib-only for exactly this reason.
-sys.path.insert(0, str(ANALYSIS))
 try:
     import bands as _band_module          # this repo owns the catalogue and its reader
-except Exception:  # noqa: BLE001
-    try:
-        from fieldlab import bands as _band_module   # pre-2026-08-31 layout, still honoured
-    except Exception:  # noqa: BLE001 — the sidecar is an optional sibling
-        _band_module = None
+except Exception:  # noqa: BLE001 — a failed import empties /api/bands rather than stopping the server
+    _band_module = None
 
 
 _SRC_RE = re.compile(
@@ -569,21 +568,31 @@ class Jobs:
         if not _valid_id(device):
             raise ValueError("bad device")
         if not ANALYSIS_PY.exists():
-            raise ValueError(f"analysis venv missing at {ANALYSIS_PY} — see analysis/README.md")
-        with self.lock:
-            self.counter += 1
-            job_id = f"job-{self.counter:04d}"
-            job = {"id": job_id, "command": command, "device": device, "from": t0, "to": t1,
-                   "state": "running", "startedAt": time.time(), "output": "", "returncode": None}
-            self.jobs[job_id] = job
+            raise ValueError("analysis venv missing — see analysis/README.md")
+        if not all(math.isfinite(t) and 0 <= t < 4e9 for t in (t0, t1)) or t0 > t1:
+            raise ValueError("from/to must be epoch seconds, with from <= to")
+        # Every value is a flag's argument: nothing may reach run.py as a positional of its own.
+        for i, x in enumerate(extra):
+            if not x.startswith("-") and (i == 0 or not extra[i - 1].startswith("-")):
+                raise ValueError(f"{x!r} is not the value of a flag")
         if command == "station":
             # A station profile is not a window of THIS device's stream — it reads a remote archive.
             argv = [str(ANALYSIS_PY), str(ANALYSIS / "run.py"), "station", *extra]
         else:
             argv = [str(ANALYSIS_PY), str(ANALYSIS / "run.py"), command, "--stream", str(STREAMS / device),
                     "--from", _epoch_to_iso(t0), "--to", _epoch_to_iso(t1), *extra]
+        with self.lock:
+            if sum(j["state"] == "running" for j in self.jobs.values()) >= MAX_RUNNING_JOBS:
+                raise ValueError(f"{MAX_RUNNING_JOBS} jobs are already running; wait for one to finish")
+            self.counter += 1
+            job_id = f"job-{self.counter:04d}"
+            job = {"id": job_id, "command": command, "device": device, "from": t0, "to": t1,
+                   "state": "running", "startedAt": time.time(), "output": "", "returncode": None}
+            self.jobs[job_id] = job
         threading.Thread(target=self._run, args=(job_id, argv), daemon=True).start()
-        return {"ok": True, "job": job_id, "argv": argv}
+        # What ran, without this machine's paths.
+        shown = ["run.py", *(f"streams/{device}" if a == str(STREAMS / device) else a for a in argv[2:])]
+        return {"ok": True, "job": job_id, "argv": shown}
 
     def _run(self, job_id: str, argv: list[str]) -> None:
         try:
@@ -705,10 +714,16 @@ def _runbook_module():
     arrive by different routes. That is the seam, not an inconsistency: ticking a checkbox must not
     cost an interpreter start.
     """
-    if str(ANALYSIS) not in sys.path:
-        sys.path.insert(0, str(ANALYSIS))
+    _analysis_on_path()
     from fieldlab import runbook
     return runbook
+
+
+def _analysis_on_path() -> None:
+    """Make the consumer's `fieldlab` package importable, once. Appended, so it can never shadow a
+    module of this repo's (a consumer's own `bands.py` once could)."""
+    if str(ANALYSIS) not in sys.path:
+        sys.path.append(str(ANALYSIS))
 
 
 class Handler(SimpleHTTPRequestHandler):
@@ -760,11 +775,11 @@ class Handler(SimpleHTTPRequestHandler):
     def _error(self, status: int, message: str) -> None:
         self._json({"ok": False, "error": message}, status)
 
-    def _body(self) -> bytes:
+    def _body(self, limit: int = MAX_JSON_BYTES) -> bytes:
         length = int(self.headers.get("Content-Length") or 0)
         if length <= 0:
             return b""
-        if length > MAX_CHUNK_BYTES:
+        if length > limit:
             raise ValueError("body too large")
         return self.rfile.read(length)
 
@@ -869,6 +884,8 @@ class Handler(SimpleHTTPRequestHandler):
                 step = max(1, int(q.get("step") or 1))
             except ValueError:
                 return self._error(400, "from/to/step must be epoch seconds / int")
+            if not (math.isfinite(t0) and math.isfinite(t1) and t0 <= t1):
+                return self._error(400, "from/to must be finite, with from <= to")
             if t1 - t0 > 6 * 3600 and step < 10:
                 return self._error(400, "a window over 6 h needs step >= 10 — ask for bins, not every sample")
             stream = q.get("stream")
@@ -898,7 +915,7 @@ class Handler(SimpleHTTPRequestHandler):
             device = q.get("device", "")
             if not _valid_id(device):
                 return self._error(400, "device")
-            sys.path.insert(0, str(ANALYSIS))
+            _analysis_on_path()
             try:
                 from fieldlab import autotests, register as reg
             except Exception as exc:  # noqa: BLE001 — the sidecar is an optional sibling
@@ -917,7 +934,7 @@ class Handler(SimpleHTTPRequestHandler):
             if not path.is_file():
                 return self._json({"declared": False,
                                    "reason": "the consuming analysis ships no watch/claim.json",
-                                   "analysis": str(ANALYSIS)})
+                                   "analysis": ANALYSIS.name})
             try:
                 data = json.loads(path.read_text())
             except ValueError as exc:
@@ -944,7 +961,11 @@ class Handler(SimpleHTTPRequestHandler):
                 return self._error(503, f"analysis sidecar unavailable: {exc}")
             # The readiness gate comes from the SAME cached reading the page is showing, so a step
             # can never be greyed out against a different window than the one on screen.
-            reading = WATCH.get(device, int(float(q.get("seconds") or 300)))
+            try:
+                seconds = max(30, min(int(float(q.get("seconds") or 300)), 3600))
+            except ValueError:
+                return self._error(400, "seconds must be a number")
+            reading = WATCH.get(device, seconds)
             signal = None
             try:
                 from fieldlab import register as reg
@@ -984,7 +1005,7 @@ class Handler(SimpleHTTPRequestHandler):
             return self._error(415, f"POST needs Content-Type {' or '.join(POST_CONTENT_TYPES)}")
         try:
             if key == "/api/stream/chunk":
-                body = self._body()
+                body = self._body(MAX_CHUNK_BYTES)
                 if not body:
                     return self._error(400, "empty body")
                 compression = self.headers.get("X-FieldLab-Compression", "deflate-raw")
@@ -1009,7 +1030,7 @@ class Handler(SimpleHTTPRequestHandler):
                     device = payload.get("device", "")
                     if not _valid_id(device):
                         return self._error(400, "device")
-                    sys.path.insert(0, str(ANALYSIS))
+                    _analysis_on_path()
                     from fieldlab import register as reg
                     updated = reg.confirm_manual_test(
                         STREAMS, device, str(payload["signal"]), str(payload["test"]),

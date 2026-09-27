@@ -58,7 +58,9 @@ def devices(root=None) -> list[str]:
 
 
 def _iso(text: str) -> float:
-    return datetime.fromisoformat(str(text).replace("Z", "+00:00")).timestamp()
+    """Epoch seconds. A time with no offset is UTC, as `serve.py` and `session.py` read it."""
+    value = datetime.fromisoformat(str(text).replace("Z", "+00:00"))
+    return (value if value.tzinfo else value.replace(tzinfo=timezone.utc)).timestamp()
 
 
 def manifest(device: str, root=None) -> list[dict]:

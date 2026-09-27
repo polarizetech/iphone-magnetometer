@@ -35,17 +35,10 @@ import numpy as np
 from scipy import signal as sg
 
 
-def _repo_root() -> Path:
-    here = Path(__file__).resolve()
-    for c in here.parents:
-        if (c / "tools").is_dir() and (c / "falsify").is_dir():
-            return c
-    raise RuntimeError("monorepo root not found. This script plants synthetic cardiac sources with injrec (tools/injection-recovery), which lives in the audio-projects monorepo; run it from a checkout where this repo is tools/iphone-magnetometer. session and census are in this repo.")
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from _monorepo import use_injrec                        # noqa: E402
 
-
-ROOT = _repo_root()
-sys.path.insert(0, str(Path(__file__).resolve().parents[2]))   # this repo: store, bands, session, census
-sys.path.insert(0, str(ROOT / "tools" / "injection-recovery"))
+ROOT = use_injrec()
 
 import store                                            # noqa: E402
 from injrec.inject import cardiac_source                # noqa: E402

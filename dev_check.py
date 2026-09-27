@@ -86,13 +86,13 @@ for col in ("monotonic_s", "mx_uT", "my_uT", "mz_uT", "magnitude_uT", "wall_cloc
     check(f"parity: session.py reads column {col}", f'"{col}"' in session_py)
 
 import ast as _ast
-_ALLOWED = {"__future__", "csv", "json", "dataclasses", "datetime", "pathlib", "numpy", "bands"}
+_ALLOWED = {"__future__", "csv", "json", "dataclasses", "datetime", "pathlib", "numpy", "bands", "store"}
 for _name in ("session.py", "census.py"):
     _tree = _ast.parse((HERE / _name).read_text())
     _mods = {(n.module or "").split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom)}
     _mods |= {a.name.split(".")[0] for n in _ast.walk(_tree) if isinstance(n, _ast.Import) for a in n.names}
     _rel = [n for n in _ast.walk(_tree) if isinstance(n, _ast.ImportFrom) and n.level]
-    check(f"{_name} imports only stdlib, numpy and this repo's bands", _mods <= _ALLOWED and not _rel,
+    check(f"{_name} imports only stdlib, numpy and this repo's bands and store", _mods <= _ALLOWED and not _rel,
           str(sorted(_mods - _ALLOWED)) + (" + relative imports" if _rel else ""))
 # The app was cut back to a pure recorder on 2026-08-23: there is no on-phone export screen any
 # more, so there is no second CSV encoder to keep in step. The spool IS the export.
@@ -319,6 +319,14 @@ try:
     check("a retry restores a manifest row that a crash lost", status == 200
           and len(manifest.read_text().splitlines()) == 1 and json.loads(body).get("duplicate") is True)
     manifest.write_text(rows)
+    blank_csv = csv_text.replace(b"\n1000,", b"\n1000,x,,", 1)          # a row with empty fields
+    status, _ = http("POST", base + "/api/stream/chunk",
+                     deflated(dict(header, seq=9, sha256=hashlib.sha256(blank_csv).hexdigest()), blank_csv), hdr)
+    fix_t0 = serve._iso_to_epoch(header["startedAt"])
+    status, body = http("GET", base + f"/api/samples?device=abcd1234&from={fix_t0 - 5}&to={fix_t0 + 5}")
+    check("a stored row with empty fields is skipped by /api/samples, not a 500", status == 200, str(status))
+    status, _ = http("GET", base + "/api/samples?device=abcd1234&from=nan&to=nan")
+    check("a NaN window is refused (400) rather than read in full", status == 400, str(status))
 
     # simulated stream with a dropped chunk, jitter-free
     t0 = time.time() - 120

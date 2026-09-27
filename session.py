@@ -20,6 +20,8 @@ from pathlib import Path
 
 import numpy as np
 
+import store                          # this repo; stdlib only
+
 
 @dataclass
 class Session:
@@ -210,42 +212,14 @@ def synthetic(duration_s: float = 60.0, rate_hz: float = 50.0, carrier_hz: float
 
 # ----------------------------------------------------------------------------- the stream store
 
-def _iso(text: str) -> float:
-    return _parse_iso(text).timestamp()
-
-
 def stream_manifest(device_dir: str | Path) -> list[dict]:
     """Every chunk the Mac holds for one device, across its streams, in time order.
 
-    The store is what `serve.py` writes: `streams/<device>/<stream>/manifest.jsonl` beside
-    `chunks/<seq>.csv`. A torn manifest line (a crash mid-append) is skipped; its chunk file is
-    still on disk and will be picked up by a later seq scan if anyone asks.
+    `store.manifest` is the one reader of `streams/<device>/<stream>/manifest.jsonl`; this keeps the
+    name callers already use. Torn or unparseable rows are skipped there, not raised.
     """
     device_dir = Path(device_dir)
-    rows: list[dict] = []
-    for stream_dir in sorted(p for p in device_dir.iterdir() if p.is_dir()):
-        manifest = stream_dir / "manifest.jsonl"
-        if not manifest.exists():
-            continue
-        by_seq: dict[int, dict] = {}
-        for line in manifest.read_text().splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                row = json.loads(line)
-            except json.JSONDecodeError:
-                continue
-            by_seq[row["seq"]] = row
-        for seq in sorted(by_seq):
-            row = dict(by_seq[seq])
-            row["stream"] = stream_dir.name
-            row["path"] = stream_dir / "chunks" / f"{seq:06d}.csv"
-            row["startEpoch"] = _iso(row["startedAt"])
-            row["endEpoch"] = _iso(row["endedAt"])
-            rows.append(row)
-    rows.sort(key=lambda r: r["startEpoch"])
-    return rows
+    return store.manifest(device_dir.name, root=device_dir.parent)
 
 
 def load_stream(device_dir: str | Path, start: datetime | float | None = None,

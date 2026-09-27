@@ -16,6 +16,18 @@ Prepared for a public repo. **Needs an app build on the phone** for the Swift ch
   values; they used to reset every setting, server URL included. The default server URL is now a
   placeholder.
 - **CardioMag Probe** had no camera usage string, so iOS terminated it on Start with PPG on.
+- **Server, second pass.** `/api/samples` skips a row with an empty field instead of dropping the
+  connection, and refuses a NaN window. An analysis job validates its window and flags before it is
+  registered (an impossible window left a job "running" forever), at most two run at once, and no
+  reply carries this machine's paths. Small JSON bodies are capped at 256 KB. The consumer's
+  analysis directory is appended to `sys.path` once, so it cannot shadow this repo's `bands`.
+  `store` reads a time with no offset as UTC, like the other readers, and `session` uses
+  `store.manifest` instead of its own copy.
+- **FieldLab uploads, second pass.** Wi-Fi-only is set per request; rebuilding the background
+  session to change it made a second session with the same identifier, and its uploads could stall
+  until relaunch. No upload starts before the system's in-flight tasks are known (each used to be
+  sent twice at launch), at most 16 are in flight, and each ack sweeps again. "Mag only" now turns
+  the gyro off when the preview had started it.
 - **No `uwtl`.** census's line arithmetic is back in `census.py`, unchanged from before 2026-09-15.
 - **Signing** comes from a git-ignored `config/Local.xcconfig`; no team ID is committed.
 - **Private data removed** from the working tree: GPS in the golden fixture and the tailnet host.
