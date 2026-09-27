@@ -20,8 +20,11 @@ Tests: `make check` (protocol check, ruff, swift-format, and `dev_check.py` agai
 
 **Kind:** a **study** under the [study protocol](https://github.com/polarizetech/scientific-research-scaffold/blob/main/PROTOCOL.md)
 (`STUDY.toml`, stage PROBE), adopted 2026-09-25. New experiments use the kit (`AGENTS.md`,
-`EXPERIMENTS.md`). **Visibility: public, decided 2026-09-25**; flip it only after the history is
-cleaned (earlier commits hold GPS in the golden fixture and the tailnet hostname).
+`EXPERIMENTS.md`). **Visibility: public, decided 2026-09-25.** The history was rewritten on
+2026-09-27 to remove recording GPS, the tailnet hostname and the Apple team ID; the original is the
+private, archived `polarizetech/iphone-magnetometer-history`, which must never be made public. **Never
+push a branch based on the old history** (anything at or behind `7407760`): it would bring all of it
+back.
 
 **Lint:** `BandRegistry.swift`, `InterferenceRegistry.swift` and `StreamChunk.swift` are read by
 Python regexes, so they carry `swift-format-ignore-file`. Reformatting them empties `/api/bands`.

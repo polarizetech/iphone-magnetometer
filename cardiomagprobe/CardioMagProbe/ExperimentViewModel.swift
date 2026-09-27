@@ -30,6 +30,7 @@ final class ExperimentViewModel: ObservableObject {
     private var sampleTimes: [Double] = []
     private var latestPPG: Double?
     private var pendingBeat = false
+    private let timestampFormatter = ISO8601DateFormatter()
 
     init() {
         sensor.onFrame = { [weak self] frame in Task { @MainActor in self?.consume(frame) } }
@@ -72,8 +73,16 @@ final class ExperimentViewModel: ObservableObject {
         isRecording = false
         if condition == .noiseFloor && elapsed >= 60 { completedNoiseCalibration = true }
         status = "Stopped · running falsification-first analysis"
-        report = SignalAnalysis.analyze(samples: samples, beatTimes: beatTimes, settings: settings)
-        status = report?.conclusion ?? "Not enough valid beats for analysis"
+        // Off the main actor: a thousand surrogates per null model keeps the UI responsive only here.
+        let (session, recorded, beats, settings) = (sessionID, samples, beatTimes, settings)
+        Task {
+            let result = await Task.detached(priority: .userInitiated) {
+                SignalAnalysis.analyze(samples: recorded, beatTimes: beats, settings: settings)
+            }.value
+            guard session == sessionID, !isRecording else { return }  // a new recording started meanwhile
+            report = result
+            status = result?.conclusion ?? "Not enough valid beats for analysis"
+        }
     }
 
     func markBeat() {
@@ -116,10 +125,10 @@ final class ExperimentViewModel: ObservableObject {
         gyroMagnitude = sqrt(f.gyro.0 * f.gyro.0 + f.gyro.1 * f.gyro.1 + f.gyro.2 * f.gyro.2)
         let beat = pendingBeat
         pendingBeat = false
-        let formatter = ISO8601DateFormatter()
         samples.append(
             SensorSample(
-                id: samples.count, sessionID: sessionID, monotonicTime: f.timestamp, wallClockISO8601: formatter.string(from: Date()),
+                id: samples.count, sessionID: sessionID, monotonicTime: f.timestamp,
+                wallClockISO8601: timestampFormatter.string(from: Date()),
                 magX: f.mag.0, magY: f.mag.1, magZ: f.mag.2, calibratedMagX: f.calibratedMag?.0, calibratedMagY: f.calibratedMag?.1,
                 calibratedMagZ: f.calibratedMag?.2, accelX: f.accel.0, accelY: f.accel.1, accelZ: f.accel.2, gyroX: f.gyro.0,
                 gyroY: f.gyro.1, gyroZ: f.gyro.2, attitudeX: f.attitude?.0, attitudeY: f.attitude?.1, attitudeZ: f.attitude?.2,

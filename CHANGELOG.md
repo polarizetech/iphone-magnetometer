@@ -1,5 +1,30 @@
 # Changelog — FieldLab (biomimetic-radar)
 
+## 2026-09-27 — CardioMag Probe: Stop no longer freezes; PPG timing is exact
+
+**Needs an app build on the phone.**
+
+- **The analysis ran for minutes on the main thread after Stop.** `extractEpochs` rebuilt the whole
+  channel array for every grid point of every beat, across 1,000 surrogates x 2 nulls x 4 channels.
+  It now takes each channel once, and runs off the main actor. Output is identical in every field
+  (old and new compared on the same session); the test session went from 169 s to about 1 s.
+- **PPG beat times carried a per-recording bias.** The offset from camera time to the sensor clock
+  was estimated from the first frame's arrival, which built that frame's delivery latency (typically
+  tens of ms) into every beat time. Frame times are now converted exactly to the host clock the
+  magnetometer uses. **Beat times in new recordings shift by that constant compared with earlier
+  ones**; relative timing within a recording is unchanged.
+- **Every recording after the first reported the camera unavailable**: Stop left the camera input
+  attached and Start tried to add it again. The configured session is now reused.
+- **`testCompleteAnalysisBeatsSurrogateNull` had failed from the start**, with p = 1.0. Its beats
+  were exactly 1 s apart, and shuffling identical intervals rebuilds the real beat train, so the
+  shuffled-interval null always equalled the real statistic. The test now uses +/-80 ms beat-to-beat
+  variability (p = 0.0099), and a second test checks that no signal is not detected (p = 0.84).
+  **The same property holds for real data: the more regular the heartbeat, the weaker the
+  shuffled-interval null, and the reported p takes the worse of the two nulls.** A low-variability
+  recording can therefore fail to show a component that is there; it cannot produce a false one.
+- A bootstrap count of 0 no longer crashes, and one date formatter is shared instead of made per
+  sample.
+
 ## 2026-09-25 — ready to publish: audit, lint, study protocol
 
 Prepared for a public repo. **Needs an app build on the phone** for the Swift changes below.
@@ -30,8 +55,9 @@ Prepared for a public repo. **Needs an app build on the phone** for the Swift ch
   the gyro off when the preview had started it.
 - **No `uwtl`.** census's line arithmetic is back in `census.py`, unchanged from before 2026-09-15.
 - **Signing** comes from a git-ignored `config/Local.xcconfig`; no team ID is committed.
-- **Private data removed** from the working tree: GPS in the golden fixture and the tailnet host.
-  Both are still in the history before this entry.
+- **Private data removed**: GPS in the golden fixture and the tailnet host. On 2026-09-27 the whole
+  history was rewritten without them (and without the team ID); the original history is in the
+  private archive `polarizetech/iphone-magnetometer-history`.
 - **Lint.** ruff (the kit's rules) and swift-format, both clean, in `make check`. The three Swift
   files the Python reads with regexes are excluded from formatting.
 - **Study protocol** adopted in place: `STUDY.toml`, `RESEARCH.md`, `EXPERIMENTS.md`, the

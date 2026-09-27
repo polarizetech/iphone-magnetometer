@@ -8,7 +8,6 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     private let context = CIContext(options: [.cacheIntermediates: false])
     private var recent: [(Double, Double)] = []
     private var lastBeat = -Double.infinity
-    private var hostTimeOffset: Double?
     var onPoint: ((TimeInterval, Double, Bool) -> Void)?
     var onStatus: ((String) -> Void)?
 
@@ -24,6 +23,16 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
 
     private func configureAndStart() {
         guard !session.isRunning else { return }
+        recent.removeAll()
+        lastBeat = -Double.infinity
+        // Configured by an earlier recording: stop() leaves the input attached, and adding it again
+        // failed, so every recording after the first reported the camera unavailable.
+        if !session.inputs.isEmpty {
+            setTorch(on: true)
+            session.startRunning()
+            onStatus?("Camera PPG active")
+            return
+        }
         session.beginConfiguration()
         session.sessionPreset = .low
         guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back),
@@ -44,9 +53,7 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
         }
         session.addOutput(output)
         session.commitConfiguration()
-        try? camera.lockForConfiguration()
-        if camera.hasTorch { try? camera.setTorchModeOn(level: 0.25) }
-        camera.unlockForConfiguration()
+        setTorch(on: true)
         session.startRunning()
         onStatus?("Camera PPG active")
     }
@@ -54,19 +61,27 @@ final class CameraPPGRecorder: NSObject, AVCaptureVideoDataOutputSampleBufferDel
     func stop() {
         queue.async { [weak self] in
             self?.session.stopRunning()
-            if let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back), camera.hasTorch {
-                try? camera.lockForConfiguration()
-                camera.torchMode = .off
-                camera.unlockForConfiguration()
-            }
+            self?.setTorch(on: false)
         }
+    }
+
+    private func setTorch(on: Bool) {
+        guard let camera = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back), camera.hasTorch,
+            (try? camera.lockForConfiguration()) != nil
+        else { return }
+        if on { try? camera.setTorchModeOn(level: 0.25) } else { camera.torchMode = .off }
+        camera.unlockForConfiguration()
     }
 
     func captureOutput(_ output: AVCaptureOutput, didOutput sampleBuffer: CMSampleBuffer, from connection: AVCaptureConnection) {
         guard let buffer = CMSampleBufferGetImageBuffer(sampleBuffer) else { return }
-        let presentationTime = CMSampleBufferGetPresentationTimeStamp(sampleBuffer).seconds
-        if hostTimeOffset == nil { hostTimeOffset = ProcessInfo.processInfo.systemUptime - presentationTime }
-        let timestamp = presentationTime + (hostTimeOffset ?? 0)
+        // Frame times converted exactly to the host clock, the one CoreMotion timestamps use. Estimating
+        // the offset from the first frame's arrival built that frame's delivery latency into every
+        // beat time, a bias that differed from one recording to the next.
+        let presentation = CMSampleBufferGetPresentationTimeStamp(sampleBuffer)
+        let timestamp = CMSyncConvertTime(
+            presentation, from: session.synchronizationClock ?? CMClockGetHostTimeClock(), to: CMClockGetHostTimeClock()
+        ).seconds
         let image = CIImage(cvPixelBuffer: buffer)
         let extent = image.extent
         let vector = CIVector(x: extent.minX, y: extent.minY, z: extent.width, w: extent.height)

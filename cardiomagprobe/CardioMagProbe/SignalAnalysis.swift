@@ -31,7 +31,10 @@ enum SignalAnalysis {
         ]
         var rng = SeededGenerator(state: settings.seed)
         let results = channels.compactMap { name, channel -> AxisResult? in
-            let epochs = extractEpochs(samples: samples, beatTimes: valid, grid: relativeGrid, channel: channel, settings: settings)
+            // One pass over the samples per channel. The surrogate loop below extracts epochs
+            // 2 x surrogateCount times, and rebuilding this array inside it froze the app on Stop.
+            let values = samples.map(channel)
+            let epochs = extractEpochs(times: time, values: values, beatTimes: valid, grid: relativeGrid, settings: settings)
             guard epochs.count >= 4 else { return nil }
             let mean = columnMean(epochs)
             let (low, high) = bootstrapCI(epochs: epochs, count: settings.bootstrapCount, rng: &rng)
@@ -46,15 +49,20 @@ enum SignalAnalysis {
                 let shift = Double.random(
                     in: settings.postWindow..<(max(settings.postWindow + 0.01, duration - settings.preWindow)), using: &rng)
                 let shifted = valid.map { (time.first ?? 0) + (($0 - (time.first ?? 0) + shift).truncatingRemainder(dividingBy: duration)) }
-                let nullEpochs = extractEpochs(
-                    samples: samples, beatTimes: shifted, grid: relativeGrid, channel: channel, settings: settings)
-                if !nullEpochs.isEmpty { circularNullRMS.append(rms(responseIndices.map { columnMean(nullEpochs)[$0] })) }
+                let nullEpochs = extractEpochs(times: time, values: values, beatTimes: shifted, grid: relativeGrid, settings: settings)
+                if !nullEpochs.isEmpty {
+                    let nullMean = columnMean(nullEpochs)
+                    circularNullRMS.append(rms(responseIndices.map { nullMean[$0] }))
+                }
                 let intervals = zip(valid.dropFirst(), valid).map(-).shuffled(using: &rng)
                 var shuffled = [valid[0]]
                 for interval in intervals { shuffled.append(shuffled.last! + interval) }
                 let shuffledEpochs = extractEpochs(
-                    samples: samples, beatTimes: shuffled, grid: relativeGrid, channel: channel, settings: settings)
-                if !shuffledEpochs.isEmpty { shuffledNullRMS.append(rms(responseIndices.map { columnMean(shuffledEpochs)[$0] })) }
+                    times: time, values: values, beatTimes: shuffled, grid: relativeGrid, settings: settings)
+                if !shuffledEpochs.isEmpty {
+                    let shuffledMean = columnMean(shuffledEpochs)
+                    shuffledNullRMS.append(rms(responseIndices.map { shuffledMean[$0] }))
+                }
             }
             let circularP = Double(1 + circularNullRMS.filter { $0 >= realRMS }.count) / Double(circularNullRMS.count + 1)
             let shuffledP = Double(1 + shuffledNullRMS.filter { $0 >= realRMS }.count) / Double(shuffledNullRMS.count + 1)
@@ -82,10 +90,20 @@ enum SignalAnalysis {
         samples: [SensorSample], beatTimes: [Double], grid: [Double], channel: (SensorSample) -> Double, settings: AnalysisSettings
     ) -> [[Double]] {
         guard samples.count > 1 else { return [] }
-        let times = samples.map(\.monotonicTime)
+        return extractEpochs(
+            times: samples.map(\.monotonicTime), values: samples.map(channel), beatTimes: beatTimes, grid: grid, settings: settings)
+    }
+
+    /// Baseline-corrected epochs from times and values already pulled out of the samples.
+    static func extractEpochs(
+        times: [Double], values: [Double], beatTimes: [Double], grid: [Double], settings: AnalysisSettings
+    ) -> [[Double]] {
+        guard times.count > 1, let firstTime = times.first, let lastTime = times.last,
+            let gridStart = grid.first, let gridEnd = grid.last
+        else { return [] }
         return beatTimes.compactMap { beat in
-            guard beat + grid.first! >= times.first!, beat + grid.last! <= times.last! else { return nil }
-            var epoch = grid.map { interpolate(times: times, values: samples.map(channel), at: beat + $0) }
+            guard beat + gridStart >= firstTime, beat + gridEnd <= lastTime else { return nil }
+            var epoch = grid.map { interpolate(times: times, values: values, at: beat + $0) }
             let baseline = zip(grid, epoch).filter { $0.0 >= settings.baselineStart && $0.0 <= settings.baselineEnd }.map(\.1)
             guard !baseline.isEmpty else { return nil }
             let b = baseline.reduce(0, +) / Double(baseline.count)
@@ -137,6 +155,10 @@ enum SignalAnalysis {
     }
 
     private static func bootstrapCI(epochs: [[Double]], count: Int, rng: inout SeededGenerator) -> ([Double], [Double]) {
+        guard count > 0 else {
+            let mean = columnMean(epochs)
+            return (mean, mean)
+        }
         var means: [[Double]] = []
         for _ in 0..<count {
             means.append(columnMean((0..<epochs.count).map { _ in epochs[Int.random(in: 0..<epochs.count, using: &rng)] }))

@@ -48,13 +48,27 @@ final class SignalAnalysisTests: XCTestCase {
         XCTAssertGreaterThan(r, 0.9)
     }
 
-    func testCompleteAnalysisBeatsSurrogateNull() {
+    /// Beats vary from one to the next, as a heart's do. With every interval exactly 1 s, shuffling the
+    /// intervals rebuilds the real beat train, so the shuffled-interval null equals the real statistic
+    /// every time and p is 1 however strong the signal: this test failed that way from the start.
+    private let variedBeats = SignalAnalysis.jittered(
+        times: stride(from: 2.0, through: 28.0, by: 1.0).map { $0 }, milliseconds: 80, seed: 3)
+
+    private func xAxisP(amplitude: Double) -> Double {
         var settings = AnalysisSettings()
         settings.surrogateCount = 100
         settings.bootstrapCount = 100
-        let beats = stride(from: 2.0, through: 28.0, by: 1.0).map { $0 }
-        let report = SignalAnalysis.analyze(samples: makeSamples(beats: beats), beatTimes: beats, settings: settings)
+        let report = SignalAnalysis.analyze(
+            samples: makeSamples(beats: variedBeats, amplitude: amplitude), beatTimes: variedBeats, settings: settings)
         XCTAssertNotNil(report)
-        XCTAssertLessThan(report!.axisResults.first(where: { $0.axis == "X" })!.empiricalP, 0.05)
+        return report?.axisResults.first(where: { $0.axis == "X" })?.empiricalP ?? 1
+    }
+
+    func testCompleteAnalysisBeatsSurrogateNull() {
+        XCTAssertLessThan(xAxisP(amplitude: 0.08), 0.05)
+    }
+
+    func testNoInjectedSignalIsNotDetected() {
+        XCTAssertGreaterThan(xAxisP(amplitude: 0), 0.05)
     }
 }
