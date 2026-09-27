@@ -1,0 +1,49 @@
+name: CardioMagProbe
+options:
+  bundleIdPrefix: org.cardiomag
+  deploymentTarget:
+    iOS: "17.0"
+# The signing team comes from ../config/Local.xcconfig (git-ignored); see config/Signing.xcconfig.
+configFiles:
+  Debug: ../config/Signing.xcconfig
+  Release: ../config/Signing.xcconfig
+settings:
+  base:
+    SWIFT_VERSION: 5.9
+targets:
+  CardioMagProbe:
+    type: application
+    platform: iOS
+    sources:
+      - path: CardioMagProbe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.cardiomag.CardioMagProbe
+        TARGETED_DEVICE_FAMILY: "1"
+        GENERATE_INFOPLIST_FILE: NO
+    info:
+      path: CardioMagProbe/Info.plist
+      properties:
+        # Without it iOS terminates the app on the camera request (Start, with fingertip PPG on).
+        NSCameraUsageDescription: "Fingertip camera timing (PPG) marks each heartbeat so the magnetometer can be averaged on it. Video is analysed on the phone and never saved."
+  CardioMagProbeTests:
+    type: bundle.unit-test
+    platform: iOS
+    sources:
+      - path: CardioMagProbeTests
+    dependencies:
+      - target: CardioMagProbe
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: org.cardiomag.CardioMagProbeTests
+        GENERATE_INFOPLIST_FILE: YES
+schemes:
+  CardioMagProbe:
+    build:
+      targets:
+        CardioMagProbe: all
+        CardioMagProbeTests: [test]
+    test:
+      targets:
+        - CardioMagProbeTests
+

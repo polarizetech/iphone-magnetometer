@@ -1,0 +1,118 @@
+{
+  "achievedMagnetometerRateHz" : 101.43563008471959,
+  "achievedMotionRateHz" : 99.6703411856348,
+  "analysisVersion" : "FieldLab-MVP-1.1",
+  "blindedID" : "C4B56272",
+  "codeSHA256" : "dc7e5f03f0d3ccf6d2b55ab60ae187718590618af440e0635ba0a52912dfc21f",
+  "deviceModel" : "iPhone17,1",
+  "emitter" : {
+    "amplitude" : 0.6,
+    "carrierHz" : 8.3,
+    "chipSeconds" : 0.25,
+    "code" : [
+      1,
+      1,
+      1,
+      -1,
+      -1,
+      1,
+      -1
+    ],
+    "transducer" : "cpuLoad"
+  },
+  "endedAt" : "2026-08-23T06:12:10Z",
+  "eventTimestamps" : [
+
+  ],
+  "experimentID" : "220D98C6-8EF2-4B15-A14C-207F415775FB",
+  "grounding" : "unknown",
+  "motion" : "stationary",
+  "notes" : "",
+  "protocolSnapshot" : {
+    "analysisWindowEnd" : 60,
+    "analysisWindowStart" : 0,
+    "bandPolicies" : {
+      "cardiac" : "watch",
+      "drift" : "context",
+      "human-alpha" : "watch",
+      "mains-50" : "carrier",
+      "mains-60" : "carrier",
+      "mains-harmonic" : "context",
+      "pc1" : "watch",
+      "pc3-4" : "watch",
+      "pc5" : "watch",
+      "respiration" : "watch",
+      "schumann-1" : "watch",
+      "schumann-2" : "watch",
+      "schumann-3" : "watch",
+      "schumann-4" : "context",
+      "schumann-5" : "context",
+      "traction" : "context"
+    },
+    "blinded" : true,
+    "chipDurationSeconds" : 0.25,
+    "code" : [
+      1,
+      1,
+      1,
+      -1,
+      -1,
+      1,
+      -1
+    ],
+    "durationSeconds" : 60,
+    "id" : "220D98C6-8EF2-4B15-A14C-207F415775FB",
+    "minimumTrialsBeforeReveal" : 10,
+    "mode" : "Matched code",
+    "name" : "8.3 Hz coded recovery",
+    "preregistered" : true,
+    "processing" : {
+      "autoBandwidthFromCode" : true,
+      "bandpass" : true,
+      "coherentAveraging" : true,
+      "detrend" : true,
+      "harmonicAnalysis" : true,
+      "highCutoffHz" : 8.8,
+      "lockIn" : true,
+      "lowCutoffHz" : 7.8,
+      "matchedFilter" : true,
+      "notch" : false,
+      "notchHz" : 60,
+      "phaseTracking" : true,
+      "shuffleTesting" : true,
+      "timestampCorrection" : true
+    },
+    "representation" : "Magnitude |B|",
+    "sampleRateHz" : 100,
+    "targetFrequencyHz" : 8.3
+  },
+  "randomizedTrials" : [
+    "transmitterOn",
+    "transmitterOn",
+    "transmitterOn",
+    "transmitterOff",
+    "transmitterOn",
+    "transmitterOff",
+    "transmitterOff",
+    "sham",
+    "transmitterOff",
+    "transmitterOn",
+    "transmitterOff",
+    "sham"
+  ],
+  "spaceWeather" : {
+    "fetchedAt" : "2026-08-23T06:11:11Z",
+    "kp" : {
+      "gScale" : 0,
+      "kp" : 0,
+      "kp24hMax" : 2,
+      "timeTag" : "2026-08-23T06:07:00"
+    },
+    "notes" : [
+      "Thunder outlook unavailable: HTTP 404 from api.weather.gov"
+    ]
+  },
+  "startedAt" : "2026-08-23T06:11:10Z",
+  "systemVersion" : "26.6",
+  "trialIndex" : 2
+}

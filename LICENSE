@@ -1,0 +1,13 @@
+FieldLab is released under two licences.
+
+Code: MIT (LICENSES/MIT.txt)
+  the Swift sources, *.py, *.js, *.css, *.html, project files, tests and .github/
+
+Documentation and data: Creative Commons Attribution 4.0 International,
+CC BY 4.0 (LICENSES/CC-BY-4.0.txt)
+  the Markdown files and the test fixtures (BiomimeticRadarTests/golden/, analysis/fixtures/)
+
+Files under .agents/ are installed from polarizetech/adaptive-preregistration and keep
+that repository's licences.
+
+Copyright (c) 2026 Joshua Anderton

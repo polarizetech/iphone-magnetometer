@@ -1,0 +1,38 @@
+# Swift / Xcode build products
+.build/
+DerivedData/
+*.xcuserdatad/
+xcuserdata/
+
+# The offline sidecar's virtualenv (recreate it with analysis/README.md's uv commands)
+analysis/.venv/
+__pycache__/
+
+# Exported experiment data never belongs in the repo — it is physiological/location data
+# written on the phone. See root CLAUDE.md on private research data.
+exports/
+sessions/
+.DS_Store
+
+# The always-on stream store written by serve.py — magnetometer + optional GPS from a phone.
+# Named `streams/` and NOT `recordings/`: the gateway refuses to auto-serve any project folder
+# containing `recordings/`, which would silently remove this project's URL.
+streams/
+
+# Third-party datasets a consuming analysis may cache here. Not ours to redistribute under this
+# repo's licence.
+data/
+
+# uv and ruff
+.venv/
+.ruff_cache/
+# swift test
+.build/
+# CI's checkout of the protocol checker
+.scaffold/
+
+# Your own signing team (config/Local.xcconfig.example)
+config/Local.xcconfig
+
+# Local server settings (serve.py reads it; see README)
+fieldlab.env

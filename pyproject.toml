@@ -1,0 +1,32 @@
+[project]
+name = "iphone-magnetometer"
+version = "0.1.0"
+description = "An iPhone magnetometer recorder and stream store: iOS app, chunk wire format, server, readers."
+# The server and the gate run on the system python3 (3.9 on macOS) with the standard library only.
+requires-python = ">=3.9"
+dependencies = []
+
+[dependency-groups]
+# What CI installs: numpy for session/census, pandas and scipy for CardioMag's analysis.
+dev = ["numpy>=1.24", "pandas>=2.0", "scipy>=1.10", "pytest>=7.4", "ruff>=0.6"]
+
+[tool.uv]
+package = false
+
+[tool.ruff]
+line-length = 130
+target-version = "py39"
+
+[tool.ruff.lint]
+# The rule set of polarizetech/adaptive-preregistration.
+select = ["E", "F", "W", "B", "UP"]
+ignore = [
+  "E401",   # one-line stdlib imports are the house style
+  "UP015",  # explicit open() modes are kept for readability
+]
+
+[tool.ruff.lint.per-file-ignores]
+# dev_check.py imports each module under test at the point its checks begin.
+"dev_check.py" = ["E402"]
+# CardioMag's analysis is written in a compact one-statement-per-line-optional style.
+"cardiomagprobe/analysis/*.py" = ["E501", "E701", "E702"]

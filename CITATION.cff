@@ -1,0 +1,24 @@
+cff-version: 1.2.0
+message: "If you use FieldLab, please cite it as below."
+title: "iphone-magnetometer (FieldLab): an iPhone magnetometer recorder and stream store"
+abstract: >-
+  FieldLab streams a stock iPhone's raw magnetometer, device motion and timing to a small server in
+  self-describing chunks, keeps them in a durable store, and draws what arrived. It records and does
+  not interpret. CardioMag Probe, included, records heartbeat-locked sessions with camera PPG timing.
+type: software
+authors:
+  - family-names: Anderton
+    given-names: Joshua
+    orcid: "https://orcid.org/0009-0004-0741-6962"
+version: 0.1.0
+date-released: "2026-09-27"
+license:
+  - MIT
+  - CC-BY-4.0
+repository-code: "https://github.com/polarizetech/iphone-magnetometer"
+keywords:
+  - magnetometer
+  - iPhone
+  - Core Motion
+  - data acquisition
+  - research software

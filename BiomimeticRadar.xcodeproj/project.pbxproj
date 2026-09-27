@@ -1,0 +1,564 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		185C1FA022F26A970E742CA9 /* GoldenSessionTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = F1F266A38FA9CD3A5883B9F4 /* GoldenSessionTests.swift */; };
+		1DB5DA17E91B7D4E4D4AD20C /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5A204CFB9DC4BBF07C5E3E8F /* Components.swift */; };
+		1F3A121BFFF0D8F60DFAF993 /* LightningCouplingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = C3A494239883E73EBC0239ED /* LightningCouplingTests.swift */; };
+		27B15715DF73FAD797B0AD74 /* InterferenceView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2A910F2F3CCDD72AAD6E8D76 /* InterferenceView.swift */; };
+		2CFA50A0694C99F0CC5EFF88 /* StreamController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 34CB2F01DCABCD5749C727E0 /* StreamController.swift */; };
+		2E3D3C08FC3EA820D3457C1F /* AuditFixTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 308EAEE40B9F0B956CCAFA22 /* AuditFixTests.swift */; };
+		36994FA8E05EF3A6AD588C7A /* session-a-metadata.json in Resources */ = {isa = PBXBuildFile; fileRef = 4538B8F0B4630464ED469045 /* session-a-metadata.json */; };
+		4D4655A374FCDBF24FB0CFC7 /* BandAndCouplingTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = E4B1079DAB4BD4CAECBBF555 /* BandAndCouplingTests.swift */; };
+		52545EFA8F79CAF48483AF31 /* EnvironmentProbe.swift in Sources */ = {isa = PBXBuildFile; fileRef = AB4A27B3EC4A94AFBDF291D9 /* EnvironmentProbe.swift */; };
+		763F1EF1115F1D4F9B29C2F1 /* StreamChunkTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 165575194CC888437D49D4F4 /* StreamChunkTests.swift */; };
+		852E6805CE5049AFC78E61D8 /* SignalProcessorTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2EB33D859941FBC85E86036F /* SignalProcessorTests.swift */; };
+		9290827600A8EDDDD83CC629 /* StreamChunk.swift in Sources */ = {isa = PBXBuildFile; fileRef = E0A6E027EF002451B7A2D303 /* StreamChunk.swift */; };
+		A378122AFF761DE46B10185A /* RecorderModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = E41CD80A93F1B847CD8AA781 /* RecorderModel.swift */; };
+		A799E16CEC97BE3363E1705B /* InterferenceRegistry.swift in Sources */ = {isa = PBXBuildFile; fileRef = 85ED5C7BCC4E156E90327AF0 /* InterferenceRegistry.swift */; };
+		AF61B5978D353432846A84B4 /* SensorModels.swift in Sources */ = {isa = PBXBuildFile; fileRef = 4899B8586F4A1900E2A3E235 /* SensorModels.swift */; };
+		B2CB97A148B6AC88E7C3D81F /* RootView.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE475ADFC95A7BBDC2942C81 /* RootView.swift */; };
+		C7E59C8729402AEEDD8DF202 /* SignalCensusTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2C5C3073A832DEC93BC0B70D /* SignalCensusTests.swift */; };
+		CE28528B83707C54ACB6E999 /* QualityGates.swift in Sources */ = {isa = PBXBuildFile; fileRef = 174BDB29B797BDE64870D60D /* QualityGates.swift */; };
+		CF54B8E174691BA0B28074CE /* StreamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = BF71A4FB5208A7A82C685C62 /* StreamView.swift */; };
+		DE984500C0D96E6DE8E957A3 /* BiomimeticRadarApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = F9685A5FB2C012DE6D5495F0 /* BiomimeticRadarApp.swift */; };
+		E214A3E36042B91F78F925CA /* SelfEmitter.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB204243D4C708221685C2BA /* SelfEmitter.swift */; };
+		E52FAB98232BF0972487E478 /* EmitterSchedule.swift in Sources */ = {isa = PBXBuildFile; fileRef = E13003BE3BE01BF91B682F0F /* EmitterSchedule.swift */; };
+		ECEFF1A05C77BF9D58625E6C /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 4EAB9DB56C9BCC9FAC11DED0 /* Assets.xcassets */; };
+		ED4D73F7DF41C4E4CBDE60CE /* StreamUploader.swift in Sources */ = {isa = PBXBuildFile; fileRef = 971F91303E1C98D708AD0650 /* StreamUploader.swift */; };
+		EFEDADEF10FDD41C56CE6812 /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = F9054904AF542409B6F2A3C3 /* README.md */; };
+		F894DC52137FD85DB990E661 /* session-a-raw.csv in Resources */ = {isa = PBXBuildFile; fileRef = 36B52B392BD2FC898EC27B14 /* session-a-raw.csv */; };
+		F967AC7D8016694444F6DB92 /* SensorManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = DB4020134A08FCC79F5BE453 /* SensorManager.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9692BDA275AE541CC0AC9A8B /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = C3AC895D988822411EA4BA00 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = EB3149516039EC2C6AAA3FE3;
+			remoteInfo = BiomimeticRadar;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		165575194CC888437D49D4F4 /* StreamChunkTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamChunkTests.swift; sourceTree = "<group>"; };
+		174BDB29B797BDE64870D60D /* QualityGates.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QualityGates.swift; sourceTree = "<group>"; };
+		2A910F2F3CCDD72AAD6E8D76 /* InterferenceView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterferenceView.swift; sourceTree = "<group>"; };
+		2C5C3073A832DEC93BC0B70D /* SignalCensusTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalCensusTests.swift; sourceTree = "<group>"; };
+		2EB33D859941FBC85E86036F /* SignalProcessorTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SignalProcessorTests.swift; sourceTree = "<group>"; };
+		308EAEE40B9F0B956CCAFA22 /* AuditFixTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AuditFixTests.swift; sourceTree = "<group>"; };
+		34CB2F01DCABCD5749C727E0 /* StreamController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamController.swift; sourceTree = "<group>"; };
+		36B52B392BD2FC898EC27B14 /* session-a-raw.csv */ = {isa = PBXFileReference; path = "session-a-raw.csv"; sourceTree = "<group>"; };
+		4538B8F0B4630464ED469045 /* session-a-metadata.json */ = {isa = PBXFileReference; lastKnownFileType = text.json; path = "session-a-metadata.json"; sourceTree = "<group>"; };
+		4899B8586F4A1900E2A3E235 /* SensorModels.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorModels.swift; sourceTree = "<group>"; };
+		4EAB9DB56C9BCC9FAC11DED0 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		5A204CFB9DC4BBF07C5E3E8F /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
+		5E8505099982CC708BBA9CA2 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		85ED5C7BCC4E156E90327AF0 /* InterferenceRegistry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = InterferenceRegistry.swift; sourceTree = "<group>"; };
+		971F91303E1C98D708AD0650 /* StreamUploader.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamUploader.swift; sourceTree = "<group>"; };
+		AB4A27B3EC4A94AFBDF291D9 /* EnvironmentProbe.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EnvironmentProbe.swift; sourceTree = "<group>"; };
+		AE475ADFC95A7BBDC2942C81 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		B19FC01147D1BE2663B9F2D5 /* BiomimeticRadar.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = BiomimeticRadar.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		B58BF5C9B312B3A27D047E9E /* BiomimeticRadarTests.xctest */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.cfbundle; path = BiomimeticRadarTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		BF71A4FB5208A7A82C685C62 /* StreamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamView.swift; sourceTree = "<group>"; };
+		C3A494239883E73EBC0239ED /* LightningCouplingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = LightningCouplingTests.swift; sourceTree = "<group>"; };
+		DB204243D4C708221685C2BA /* SelfEmitter.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SelfEmitter.swift; sourceTree = "<group>"; };
+		DB4020134A08FCC79F5BE453 /* SensorManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SensorManager.swift; sourceTree = "<group>"; };
+		E0A6E027EF002451B7A2D303 /* StreamChunk.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StreamChunk.swift; sourceTree = "<group>"; };
+		E13003BE3BE01BF91B682F0F /* EmitterSchedule.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EmitterSchedule.swift; sourceTree = "<group>"; };
+		E41CD80A93F1B847CD8AA781 /* RecorderModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecorderModel.swift; sourceTree = "<group>"; };
+		E4B1079DAB4BD4CAECBBF555 /* BandAndCouplingTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BandAndCouplingTests.swift; sourceTree = "<group>"; };
+		F1F266A38FA9CD3A5883B9F4 /* GoldenSessionTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GoldenSessionTests.swift; sourceTree = "<group>"; };
+		F9054904AF542409B6F2A3C3 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		F9685A5FB2C012DE6D5495F0 /* BiomimeticRadarApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BiomimeticRadarApp.swift; sourceTree = "<group>"; };
+		5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Signing.xcconfig; path = config/Signing.xcconfig; sourceTree = SOURCE_ROOT; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		07550D9FC9C321161AF68F6B /* golden */ = {
+			isa = PBXGroup;
+			children = (
+				F9054904AF542409B6F2A3C3 /* README.md */,
+				4538B8F0B4630464ED469045 /* session-a-metadata.json */,
+				36B52B392BD2FC898EC27B14 /* session-a-raw.csv */,
+			);
+			path = golden;
+			sourceTree = "<group>";
+		};
+		122A3593776F86FC3114CA66 = {
+			isa = PBXGroup;
+			children = (
+				5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */,
+				C66241B3E70BEC7927E01762 /* BiomimeticRadar */,
+				95B858FE2FC2999B94615DF2 /* BiomimeticRadarTests */,
+				6D3E8C21EE39744A2ABA542E /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		1BFEEA6BEA7D126750FD916A /* Models */ = {
+			isa = PBXGroup;
+			children = (
+				4899B8586F4A1900E2A3E235 /* SensorModels.swift */,
+			);
+			path = Models;
+			sourceTree = "<group>";
+		};
+		5F80F2BEBE7993C6C2643D5D /* App */ = {
+			isa = PBXGroup;
+			children = (
+				F9685A5FB2C012DE6D5495F0 /* BiomimeticRadarApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		6662C049E380639AEEB956B9 /* Processing */ = {
+			isa = PBXGroup;
+			children = (
+				E13003BE3BE01BF91B682F0F /* EmitterSchedule.swift */,
+				85ED5C7BCC4E156E90327AF0 /* InterferenceRegistry.swift */,
+				174BDB29B797BDE64870D60D /* QualityGates.swift */,
+				E0A6E027EF002451B7A2D303 /* StreamChunk.swift */,
+			);
+			path = Processing;
+			sourceTree = "<group>";
+		};
+		6D3E8C21EE39744A2ABA542E /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				B19FC01147D1BE2663B9F2D5 /* BiomimeticRadar.app */,
+				B58BF5C9B312B3A27D047E9E /* BiomimeticRadarTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		7910D261FD0BEC365F7B1A96 /* Services */ = {
+			isa = PBXGroup;
+			children = (
+				AB4A27B3EC4A94AFBDF291D9 /* EnvironmentProbe.swift */,
+				E41CD80A93F1B847CD8AA781 /* RecorderModel.swift */,
+				DB204243D4C708221685C2BA /* SelfEmitter.swift */,
+				DB4020134A08FCC79F5BE453 /* SensorManager.swift */,
+				34CB2F01DCABCD5749C727E0 /* StreamController.swift */,
+				971F91303E1C98D708AD0650 /* StreamUploader.swift */,
+			);
+			path = Services;
+			sourceTree = "<group>";
+		};
+		8168DDC4E9AC412B95F2641E /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				5A204CFB9DC4BBF07C5E3E8F /* Components.swift */,
+				2A910F2F3CCDD72AAD6E8D76 /* InterferenceView.swift */,
+				AE475ADFC95A7BBDC2942C81 /* RootView.swift */,
+				BF71A4FB5208A7A82C685C62 /* StreamView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		95B858FE2FC2999B94615DF2 /* BiomimeticRadarTests */ = {
+			isa = PBXGroup;
+			children = (
+				308EAEE40B9F0B956CCAFA22 /* AuditFixTests.swift */,
+				E4B1079DAB4BD4CAECBBF555 /* BandAndCouplingTests.swift */,
+				F1F266A38FA9CD3A5883B9F4 /* GoldenSessionTests.swift */,
+				C3A494239883E73EBC0239ED /* LightningCouplingTests.swift */,
+				2C5C3073A832DEC93BC0B70D /* SignalCensusTests.swift */,
+				2EB33D859941FBC85E86036F /* SignalProcessorTests.swift */,
+				165575194CC888437D49D4F4 /* StreamChunkTests.swift */,
+				07550D9FC9C321161AF68F6B /* golden */,
+			);
+			path = BiomimeticRadarTests;
+			sourceTree = "<group>";
+		};
+		C66241B3E70BEC7927E01762 /* BiomimeticRadar */ = {
+			isa = PBXGroup;
+			children = (
+				5F80F2BEBE7993C6C2643D5D /* App */,
+				1BFEEA6BEA7D126750FD916A /* Models */,
+				6662C049E380639AEEB956B9 /* Processing */,
+				E8EF21648637BDC1914BE06F /* Resources */,
+				7910D261FD0BEC365F7B1A96 /* Services */,
+				8168DDC4E9AC412B95F2641E /* Views */,
+			);
+			path = BiomimeticRadar;
+			sourceTree = "<group>";
+		};
+		E8EF21648637BDC1914BE06F /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				4EAB9DB56C9BCC9FAC11DED0 /* Assets.xcassets */,
+				5E8505099982CC708BBA9CA2 /* Info.plist */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		01A0100767D0D48E92F70BA3 /* BiomimeticRadarTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 41FC744D7006E298529FC646 /* Build configuration list for PBXNativeTarget "BiomimeticRadarTests" */;
+			buildPhases = (
+				78DF77D1D10E32015A7D9E4F /* Sources */,
+				DFCE4AB28F2FF18A9D57BEFA /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				B186F2EBB12837F565BF2120 /* PBXTargetDependency */,
+			);
+			name = BiomimeticRadarTests;
+			packageProductDependencies = (
+			);
+			productName = BiomimeticRadarTests;
+			productReference = B58BF5C9B312B3A27D047E9E /* BiomimeticRadarTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		EB3149516039EC2C6AAA3FE3 /* BiomimeticRadar */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 447F491650485445255A2515 /* Build configuration list for PBXNativeTarget "BiomimeticRadar" */;
+			buildPhases = (
+				0F4871FE9D74BFE59DACA823 /* Sources */,
+				E0E6E907FFD581F8C8C87B82 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = BiomimeticRadar;
+			packageProductDependencies = (
+			);
+			productName = BiomimeticRadar;
+			productReference = B19FC01147D1BE2663B9F2D5 /* BiomimeticRadar.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		C3AC895D988822411EA4BA00 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					01A0100767D0D48E92F70BA3 = {
+					};
+					EB3149516039EC2C6AAA3FE3 = {
+					};
+				};
+			};
+			buildConfigurationList = 6DCE8427AA122B4AE51CE742 /* Build configuration list for PBXProject "BiomimeticRadar" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 122A3593776F86FC3114CA66;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 6D3E8C21EE39744A2ABA542E /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				EB3149516039EC2C6AAA3FE3 /* BiomimeticRadar */,
+				01A0100767D0D48E92F70BA3 /* BiomimeticRadarTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		DFCE4AB28F2FF18A9D57BEFA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EFEDADEF10FDD41C56CE6812 /* README.md in Resources */,
+				36994FA8E05EF3A6AD588C7A /* session-a-metadata.json in Resources */,
+				F894DC52137FD85DB990E661 /* session-a-raw.csv in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		E0E6E907FFD581F8C8C87B82 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				ECEFF1A05C77BF9D58625E6C /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		0F4871FE9D74BFE59DACA823 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				DE984500C0D96E6DE8E957A3 /* BiomimeticRadarApp.swift in Sources */,
+				1DB5DA17E91B7D4E4D4AD20C /* Components.swift in Sources */,
+				E52FAB98232BF0972487E478 /* EmitterSchedule.swift in Sources */,
+				52545EFA8F79CAF48483AF31 /* EnvironmentProbe.swift in Sources */,
+				A799E16CEC97BE3363E1705B /* InterferenceRegistry.swift in Sources */,
+				27B15715DF73FAD797B0AD74 /* InterferenceView.swift in Sources */,
+				CE28528B83707C54ACB6E999 /* QualityGates.swift in Sources */,
+				A378122AFF761DE46B10185A /* RecorderModel.swift in Sources */,
+				B2CB97A148B6AC88E7C3D81F /* RootView.swift in Sources */,
+				E214A3E36042B91F78F925CA /* SelfEmitter.swift in Sources */,
+				F967AC7D8016694444F6DB92 /* SensorManager.swift in Sources */,
+				AF61B5978D353432846A84B4 /* SensorModels.swift in Sources */,
+				9290827600A8EDDDD83CC629 /* StreamChunk.swift in Sources */,
+				2CFA50A0694C99F0CC5EFF88 /* StreamController.swift in Sources */,
+				ED4D73F7DF41C4E4CBDE60CE /* StreamUploader.swift in Sources */,
+				CF54B8E174691BA0B28074CE /* StreamView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		78DF77D1D10E32015A7D9E4F /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2E3D3C08FC3EA820D3457C1F /* AuditFixTests.swift in Sources */,
+				4D4655A374FCDBF24FB0CFC7 /* BandAndCouplingTests.swift in Sources */,
+				185C1FA022F26A970E742CA9 /* GoldenSessionTests.swift in Sources */,
+				1F3A121BFFF0D8F60DFAF993 /* LightningCouplingTests.swift in Sources */,
+				C7E59C8729402AEEDD8DF202 /* SignalCensusTests.swift in Sources */,
+				852E6805CE5049AFC78E61D8 /* SignalProcessorTests.swift in Sources */,
+				763F1EF1115F1D4F9B29C2F1 /* StreamChunkTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		B186F2EBB12837F565BF2120 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = EB3149516039EC2C6AAA3FE3 /* BiomimeticRadar */;
+			targetProxy = 9692BDA275AE541CC0AC9A8B /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		1400205E7C0CB41D3008FBF9 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = BiomimeticRadar/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.biomimeticradar.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Debug;
+		};
+		3EFE7F6AD4EA64C7F2E6F32E /* Debug */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Debug;
+		};
+		49A66DD24CB028D999A98AA8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.biomimeticradar.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BiomimeticRadar.app/BiomimeticRadar";
+			};
+			name = Release;
+		};
+		A691861CB42AFA97F87D4B1C /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@loader_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.biomimeticradar.tests;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BiomimeticRadar.app/BiomimeticRadar";
+			};
+			name = Debug;
+		};
+		ABBAC680D4063062CAFF7F44 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				INFOPLIST_FILE = BiomimeticRadar/Resources/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				PRODUCT_BUNDLE_IDENTIFIER = com.biomimeticradar.app;
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = 1;
+			};
+			name = Release;
+		};
+		E07A25D5AB9411A2B756F640 /* Release */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 5160A7C2E9D04B1F8A3C0D11 /* Signing.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 17.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.9;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		41FC744D7006E298529FC646 /* Build configuration list for PBXNativeTarget "BiomimeticRadarTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				A691861CB42AFA97F87D4B1C /* Debug */,
+				49A66DD24CB028D999A98AA8 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		447F491650485445255A2515 /* Build configuration list for PBXNativeTarget "BiomimeticRadar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				1400205E7C0CB41D3008FBF9 /* Debug */,
+				ABBAC680D4063062CAFF7F44 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		6DCE8427AA122B4AE51CE742 /* Build configuration list for PBXProject "BiomimeticRadar" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3EFE7F6AD4EA64C7F2E6F32E /* Debug */,
+				E07A25D5AB9411A2B756F640 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = C3AC895D988822411EA4BA00 /* Project object */;
+}

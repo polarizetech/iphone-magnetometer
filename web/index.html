@@ -1,0 +1,170 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>FieldLab — always-on stream</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="design/design.css">
+<script type="module" src="design/design.js"></script>
+<link rel="stylesheet" href="app.css">
+<body class="ui">
+
+<header class="hdr">
+  <div>
+    <p class="ui-label ui-label--accent">iPhone magnetometer · always-on stream · SKETCH</p>
+    <h1 class="ui-display ui-display--2">FieldLab</h1>
+    <p class="sub ui-standfirst">What the phone's magnetometer is picking up right now, kept on this Mac as it arrives.</p>
+  </div>
+  <div class="badges">
+    <ui-tier tier="measured" id="liveBadge">MEASURED · waiting</ui-tier>
+    <ui-tier tier="exploratory">EXPLORATORY</ui-tier>
+  </div>
+</header>
+
+<section id="claimBanner" class="card" hidden></section>
+<section id="alertBanner" class="alertbar" hidden></section>
+
+<p class="boundary">Frequency proximity alone never identifies a signal as biological, planetary, or Schumann-related.
+  Every band drawn here is a <em>known</em> band from the app's registry, so a peak inside one can be named;
+  nothing on this page decides what made it. A chunk recorded with the phone's own emitter on is stamped
+  <code>EMITTER-ON</code> and measures the phone, not the world.</p>
+
+<section class="card" id="statusCard">
+  <div class="row">
+    <label>Device <select id="device"><option value="">— no device has streamed yet —</option></select></label>
+    <label>Window
+      <select id="window">
+        <option value="60">last 60 s</option>
+        <option value="300" selected>last 5 min</option>
+        <option value="1800">last 30 min</option>
+        <option value="3600">last hour</option>
+      </select></label>
+    <label>Spectrum over
+      <select id="specSeconds">
+        <option value="30">30 s</option>
+        <option value="60" selected>60 s</option>
+        <option value="300">5 min</option>
+      </select></label>
+    <label>Channel
+      <select id="channel">
+        <option value="mag" selected>|B| magnitude</option>
+        <option value="mx">axis X</option>
+        <option value="my">axis Y</option>
+        <option value="mz">axis Z</option>
+        <option value="xyz">X · Y · Z</option>
+      </select></label>
+    <label>Target Hz <input id="target" type="number" step="0.1" value="8.3" style="width:5rem"></label>
+    <button class="btn btn--go" id="scan">Scan for signals</button>
+    <span class="pill" id="sse">events: connecting…</span>
+  </div>
+  <div class="kpis" id="kpis"></div>
+  <p class="hint" id="streamNote"></p>
+</section>
+
+<section class="card" id="filterCard">
+  <h2 class="ui-display ui-display--3">View filters — raw is never touched</h2>
+  <p class="hint" id="filterPhilosophy">The raw recording is stored unfiltered. These toggles change only what is drawn; turn them all off to see the raw data again.</p>
+  <div class="row" id="filterRow">
+    <label><input type="checkbox" id="fRaw" checked> Raw (no filter)</label>
+    <label><input type="checkbox" id="fHighpass"> High-pass <input id="fHpHz" type="number" step="0.01" value="0.1" style="width:4.5rem"> Hz — hides the standing field &amp; hard-iron offset</label>
+    <label><input type="checkbox" id="fDetrend"> Detrend (remove drift)</label>
+  </div>
+  <div class="row" id="bandNotchRow"><span class="pill">Notch a known band:</span></div>
+  <p class="hint">Mains and its harmonics are the usual notch. At this sample rate a band above Nyquist folds — the notch is applied at its <em>aliased</em> location, and a folded band is marked ⤵.</p>
+  <div id="interferenceList" class="interference"></div>
+</section>
+
+<section class="card">
+  <h2 class="ui-display ui-display--3">Live strip</h2>
+  <canvas id="strip" class="chart" height="220"></canvas>
+  <p class="hint">Gaps in the sample clock (more than 3× the median interval) are shaded; the line breaks rather than bridging them. Wall time is the phone's clock, anchored per chunk.</p>
+</section>
+
+<div class="grid2">
+  <section class="card">
+    <h2 class="ui-display ui-display--3">Spectrum</h2>
+    <canvas id="spectrum" class="chart" height="260"></canvas>
+    <div class="kpis" id="specKpis"></div>
+    <p class="hint">Welch PSD of the selected channel over the last <span id="specSecondsLabel">60 s</span>, detrended, Hann, 50% overlap. Shaded bands come from <code>BandRegistry.swift</code> via <code>api/bands</code>; a band marked ⤵ is <strong>folded</strong> — it lives above Nyquist at this rate and appears here only as an alias. The dotted amber tick is the noise floor <em>at the target</em>: the median PSD within ±2 Hz, excluding ±0.25 Hz.</p>
+  </section>
+  <section class="card">
+    <h2 class="ui-display ui-display--3">Rolling spectrogram</h2>
+    <canvas id="spectrogram" class="chart" height="260"></canvas>
+    <p class="hint">One column per chunk as it lands, oldest left. One dB scale across every column, stated on the canvas. Up to 360 chunks are kept in the page — at 10 s chunks that is an hour.</p>
+  </section>
+</div>
+
+<section class="card" id="stationCard">
+  <div class="row">
+    <h2 class="ui-display ui-display--3" style="margin:0">Professional ELF station · reference</h2>
+    <button class="btn btn--go" id="stationRun">Compare against a real ELF station</button>
+    <span class="pill" id="stationSource">source: api/dataset_fetch</span>
+  </div>
+  <p class="hint">A reference recording from a professional station, supplied by the consuming analysis's <code>station</code> job and read through the same census and fingerprint as the phone. Station units usually differ from the phone's, so compare frequency structure, not amplitudes.</p>
+  <div id="stationBody"></div>
+</section>
+
+<section class="card" id="findingsCard">
+  <div class="row">
+    <h2 class="ui-display ui-display--3" style="margin:0">What has actually been measured</h2>
+    <span class="pill" id="findingsSource">source: api/dataset_fetch + this rig</span>
+  </div>
+  <p class="hint">Everything this entry has measured, assembled from cached artefacts by
+  <code>analysis/run.py summary</code>. It reads what is already on disk and <strong>never
+  fetches</strong>. Station amplitudes are uncalibrated ADC counts and are never compared
+  numerically against the phone's nanotesla — only frequency structure is.</p>
+  <div id="findingsBody"></div>
+</section>
+
+<section class="card" id="registerCard">
+  <div class="row">
+    <h2 class="ui-display ui-display--3" style="margin:0">Signal register</h2>
+    <button class="btn btn--go" id="identify">Identify signals in this window</button>
+    <span class="pill" id="registerCount">—</span>
+  </div>
+  <p class="hint">Every signal ever logged for this device: what it looked like, which tests it survived, and which tests still need a person. A signal seen once is an anecdote; the same one at the same hour on eleven days is a pattern — which is why nothing here is ever deleted.</p>
+  <div id="registerList"></div>
+</section>
+
+<section class="card">
+  <h2 class="ui-display ui-display--3">Chunks and gaps</h2>
+  <div class="row">
+    <span class="pill" id="chunkCount">—</span>
+    <span class="pill" id="gapCount">—</span>
+    <span class="pill" id="spoolNote">—</span>
+  </div>
+  <div class="out" id="chunkList"></div>
+</section>
+
+<section class="card">
+  <h2 class="ui-display ui-display--3">Crunch it on the Mac — <code>analysis/run.py</code></h2>
+  <p>Runs the consuming analysis (<code>FIELDLAB_ANALYSIS</code>) over a window of stream in its own venv and shows what it printed. The server never does the maths itself; it starts a job and reports it.</p>
+  <p class="hint"><strong>census</strong> partitions all AC variance and names what it can — anything it cannot goes to numbered <code>U-nn</code> lines and a broadband floor. <strong>coupling</strong> asks whether a slow band's phase predicts a carrier's envelope, through the whole surrogate ladder (S1 time-shift, S2 phase-randomised, S3 shape-matched, S4 BH-FDR) with two preconditions in front of it: a band must contain an oscillation, and the modulator must not also be in the IMU. <strong>baseline</strong> is the one to run on a clean recording with no magnet on the phone — it is what turns every "undetermined" verdict into a number.</p>
+  <div class="row">
+    <label>Command
+      <select id="cmd">
+        <option value="baseline">baseline — the noise floor per band, in nT/√Hz</option>
+        <option value="census">census — partition every unit of AC variance</option>
+        <option value="coupling">coupling — is something riding on a carrier (S1–S4 ladder)</option>
+        <option value="jitter">jitter — is the sample clock usable</option>
+        <option value="structure">structure — waveform-structure dimensions, exploratory</option>
+        <option value="channel">channel — transmit→receive as a compression triple</option>
+        <option value="context">context — archival Kp beside the window</option>
+      </select></label>
+    <label>Window
+      <select id="jobWindow">
+        <option value="600">last 10 min</option>
+        <option value="3600" selected>last hour</option>
+        <option value="21600">last 6 h</option>
+        <option value="custom">custom (ISO below)</option>
+      </select></label>
+    <label>From <input id="jobFrom" placeholder="2026-08-23T20:00:00Z" style="width:14rem"></label>
+    <label>To <input id="jobTo" placeholder="2026-08-23T21:00:00Z" style="width:14rem"></label>
+    <button class="btn btn--go" id="runJob">Run</button>
+    <span class="pill" id="venvPill">venv: ?</span>
+  </div>
+  <div id="jobs"></div>
+</section>
+
+<p class="hint foot">Served by <code>serve.py</code> (stdlib Python). Data lives in <code>streams/</code> on this Mac and is not on the URL surface. Nothing here is authenticated — keep it on a private network.</p>
+
+<script type="module" src="app.js"></script>
+</body>
