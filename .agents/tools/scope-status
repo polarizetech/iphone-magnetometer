@@ -1,0 +1,460 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: MIT
+"""scope-status — show the state of each unit's scope record (SCOPE.toml).
+
+Usage:
+  scope-status [PATH]           PATH is a SCOPE.toml, or a folder whose units are listed (default: .)
+                                Units without a record yet are listed as unscoped.
+  scope-status --check [PATH]   exit 1 if a record breaks the contract, or a production record isn't ready
+
+Prints the stage, the build note or the claim, each feature's basis and decision, and three lists: open
+decisions, blocked features, and what stands between the unit and production. Contract: SCOPE_PROTOCOL.md §9.
+Stdlib only (Python 3.9+).
+"""
+import argparse, json, os, re, sys
+
+FORMATS = (1, 2, 3)  # format 1 named the unit `tool`
+CLAIM_DETAILS = ("concepts", "measure", "smallest_effect", "assumptions")  # format 2 kept them in the record
+STAGES = ("exploratory", "testing", "production")
+OLD_STAGES = ("exploratory", "production")  # formats 1 and 2, where `exploratory` meant today's `testing`
+KINDS = ("science", "infrastructure")
+STATUSES = ("accepted", "changed", "dropped")
+BASES = ("established", "supported", "derived", "override", "gap")
+DECISIONS = ("use-research", "override", "research-further")
+OUTCOME_KNOWN = ("no", "partial", "yes")
+DATE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+# A corpus claim ID, or a DOI or URL followed by how deeply it was read.
+SOURCE = re.compile(r"^(claim:\S+|(doi:10\.\S+|https?://\S+) \[(FT|AB)\])$")
+SKIP_DIRS = {".git", ".agents", "node_modules", ".venv", "venv", "__pycache__"}
+
+
+class ParseError(Exception):
+    pass
+
+
+# ---------------------------------------------------------------- the TOML subset (§9)
+# Deliberately not tomllib: a record must parse the same everywhere, including under the minimal parsers
+# other tools use on Python 3.9, so anything outside the subset is an error here too.
+
+def parse(text):
+    root, cur, pending = {}, None, None  # pending: (key, parts, line number) while an array spans lines
+    cur = root
+    for n, raw in enumerate(text.splitlines(), 1):
+        line = _strip_comment(raw).strip()
+        if pending:
+            pending[1].append(line)
+            joined = " ".join(pending[1])
+            if _depth(joined) == 0:
+                cur[pending[0]] = _value(joined, pending[2])
+                pending = None
+            continue
+        if not line:
+            continue
+        if line.startswith("[["):
+            name = line[2:-2].strip() if line.endswith("]]") else None
+            if not name or not re.match(r"^[A-Za-z0-9_-]+$", name):
+                raise ParseError(f"line {n}: bad array-of-tables header {raw!r}")
+            cur = {}
+            root.setdefault(name, []).append(cur)
+        elif line.startswith("["):
+            name = line[1:-1].strip() if line.endswith("]") else None
+            if not name or not re.match(r"^[A-Za-z0-9_-]+$", name):
+                raise ParseError(f"line {n}: bad table header {raw!r}")
+            cur = root.setdefault(name, {})
+        elif "=" in line:
+            key, val = (s.strip() for s in line.split("=", 1))
+            if not re.match(r"^[A-Za-z0-9_-]+$", key):
+                raise ParseError(f"line {n}: bad key {key!r}")
+            if val.startswith("[") and _depth(val) > 0:
+                pending = (key, [val], n)
+            else:
+                cur[key] = _value(val, n)
+        else:
+            raise ParseError(f"line {n}: cannot parse {raw!r} (multi-line strings are not in the subset)")
+    if pending:
+        raise ParseError(f"line {pending[2]}: the array for {pending[0]!r} is never closed")
+    return root
+
+
+def _strip_comment(s):
+    out, quote, escaped = [], None, False
+    for ch in s:
+        if quote:
+            out.append(ch)
+            if escaped:
+                escaped = False
+            elif ch == "\\" and quote == '"':
+                escaped = True
+            elif ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+            out.append(ch)
+        elif ch == "#":
+            break
+        else:
+            out.append(ch)
+    return "".join(out)
+
+
+def _depth(s):
+    """Open brackets minus closed ones, outside strings."""
+    depth, quote, escaped = 0, None, False
+    for ch in s:
+        if quote:
+            if escaped:
+                escaped = False
+            elif ch == "\\" and quote == '"':
+                escaped = True
+            elif ch == quote:
+                quote = None
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+    return depth
+
+
+def _split_items(inner):
+    items, buf, quote, escaped, depth = [], [], None, False, 0
+    for ch in inner:
+        if quote:
+            buf.append(ch)
+            if escaped:
+                escaped = False
+            elif ch == "\\" and quote == '"':
+                escaped = True
+            elif ch == quote:
+                quote = None
+            continue
+        if ch in "\"'":
+            quote = ch
+        elif ch == "[":
+            depth += 1
+        elif ch == "]":
+            depth -= 1
+        elif ch == "," and depth == 0:
+            items.append("".join(buf).strip())
+            buf = []
+            continue
+        buf.append(ch)
+    tail = "".join(buf).strip()
+    if tail:
+        items.append(tail)
+    return items
+
+
+def _value(v, n):
+    if v.startswith('"""') or v.startswith("'''"):
+        raise ParseError(f"line {n}: multi-line strings are not in the subset; use \\n in a single-line string")
+    if v.startswith('"'):
+        if len(v) < 2 or not v.endswith('"'):
+            raise ParseError(f"line {n}: unterminated string")
+        try:
+            return json.loads(v)  # TOML basic-string escapes are JSON's
+        except ValueError:
+            raise ParseError(f"line {n}: bad string {v!r}") from None
+    if v.startswith("'"):
+        if len(v) < 2 or not v.endswith("'"):
+            raise ParseError(f"line {n}: unterminated string")
+        return v[1:-1]
+    if v in ("true", "false"):
+        return v == "true"
+    if v.startswith("["):
+        if not v.endswith("]"):
+            raise ParseError(f"line {n}: bad array {v!r}")
+        inner = v[1:-1].strip()
+        return [_value(item, n) for item in _split_items(inner)] if inner else []
+    if v.startswith("{"):
+        raise ParseError(f"line {n}: inline tables are not in the subset")
+    if re.match(r"^[+-]?\d+$", v):
+        return int(v)
+    raise ParseError(f"line {n}: unsupported value {v!r} (dates are strings: \"YYYY-MM-DD\")")
+
+
+# ---------------------------------------------------------------- the contract (§9)
+
+def unit_name(rec):
+    return text(rec, "tool" if rec.get("format") == 1 else "unit")
+
+
+def stage_of(rec):
+    """The record's stage in today's terms, or None if it isn't a valid one for its format."""
+    stage = rec.get("stage")
+    if rec.get("format") in (1, 2):
+        return {"exploratory": "testing", "production": "production"}.get(stage)
+    return stage if stage in STAGES else None
+
+
+def text(d, key):
+    v = d.get(key, "")
+    return v.strip() if isinstance(v, str) else ""
+
+
+def items(d, key):
+    v = d.get(key, [])
+    return v if isinstance(v, list) else []
+
+
+def assess(rec):
+    """(errors, open, blocked, before_production): the contract's rules applied to one parsed record."""
+    errors, open_items, blocked, gaps_to_production = [], [], [], []
+
+    if rec.get("format") not in FORMATS:
+        errors.append("format must be 1, 2 or 3")
+    if not unit_name(rec):
+        errors.append("unit is empty" if rec.get("format") != 1 else "tool is empty")
+    stage = stage_of(rec)
+    if stage is None:
+        allowed = OLD_STAGES if rec.get("format") in (1, 2) else STAGES
+        errors.append(f"stage must be one of {', '.join(allowed)}")
+    exploring = stage == "exploratory"
+
+    claim = rec.get("claim") if isinstance(rec.get("claim"), dict) else {}
+    if exploring:
+        note = rec.get("exploration") if isinstance(rec.get("exploration"), dict) else {}
+        if not text(note, "building"):
+            open_items.append("the build note is empty: exploration.building says what is being built (step 0)")
+        if text(note, "started") and not DATE.match(text(note, "started")):
+            errors.append("exploration.started must be YYYY-MM-DD")
+        gaps_to_production.append("exploratory: it needs its claim, and the testing stage, first (step 1)")
+    elif not (text(claim, "text") and text(claim, "counts_against") and text(claim, "decided")):
+        open_items.append("the claim isn't settled (step 1): text, counts_against and decided are required")
+    if text(claim, "decided") and not DATE.match(text(claim, "decided")):
+        errors.append("claim.decided must be YYYY-MM-DD")
+
+    features = rec.get("features", [])
+    if not isinstance(features, list):
+        errors.append("features must be an array of tables ([[features]])")
+        features = []
+    seen = set()
+    for i, f in enumerate(features, 1):
+        fid = text(f, "id") or f"#{i}"
+        where = f"{fid}"
+        if not text(f, "id"):
+            errors.append(f"feature {i} has no id")
+        elif fid in seen:
+            errors.append(f"{where}: duplicate id")
+        seen.add(fid)
+        if not text(f, "name"):
+            errors.append(f"{where}: no name")
+        kind, status = f.get("kind"), f.get("status")
+        if kind not in KINDS:
+            errors.append(f"{where}: kind must be one of {', '.join(KINDS)}")
+        if status not in STATUSES:
+            errors.append(f"{where}: status must be one of {', '.join(STATUSES)}")
+        if kind != "science" or status == "dropped" or exploring:
+            continue  # an exploratory unit's features need no basis or decision yet
+
+        if not text(f, "does"):
+            errors.append(f"{where}: `does` is empty (what it computes or shows)")
+        if not text(f, "counts_against"):
+            errors.append(f"{where}: `counts_against` is empty")
+        basis, decision = f.get("basis", ""), text(f, "decision")
+        sources = items(f, "sources")
+        for s in sources:
+            if not isinstance(s, str) or not SOURCE.match(s.strip()):
+                errors.append(f"{where}: source {s!r} needs an identifier (claim:, doi:, https://) "
+                              "and, for a DOI or URL, a read depth [FT] or [AB]")
+        if basis not in BASES:
+            open_items.append(f"{where}: no basis yet (step 4)" if not basis else f"{where}: unknown basis {basis!r}")
+            if basis:
+                errors.append(f"{where}: basis must be one of {', '.join(BASES)}")
+            continue
+        if basis in ("established", "supported") and not sources:
+            errors.append(f"{where}: {basis} needs at least one source")
+        if basis == "derived" and not (sources and text(f, "derivation")):
+            errors.append(f"{where}: derived needs its sources and a derivation")
+        if basis == "override":
+            for key in ("departs_from", "reasoning", "decided"):
+                if not text(f, key):
+                    errors.append(f"{where}: override needs `{key}`")
+            if decision != "override":
+                errors.append(f"{where}: an override's decision must be `override`")
+            if not items(f, "experiments"):
+                open_items.append(f"{where}: override has no preregistered experiment yet (step 5)")
+            if not text(f, "result"):
+                gaps_to_production.append(f"{where}: override's experiment has no recorded result and decision")
+        if basis == "gap" and decision not in ("", "research-further"):
+            errors.append(f"{where}: a gap can only be open or `research-further`; "
+                          "an override changes the basis to `override`")
+        if decision and decision not in DECISIONS:
+            errors.append(f"{where}: decision must be one of {', '.join(DECISIONS)}")
+        if decision == "use-research" and basis not in ("established", "supported", "derived"):
+            errors.append(f"{where}: use-research needs an established, supported or derived basis")
+        if decision and not text(f, "decided"):
+            errors.append(f"{where}: a decision needs `decided`")
+        if text(f, "decided") and not DATE.match(text(f, "decided")):
+            errors.append(f"{where}: decided must be YYYY-MM-DD")
+
+        if decision == "research-further":
+            blocked.append(f"{where}: research further ({basis}); not to be built until the user decides again")
+        elif not decision:
+            open_items.append(f"{where}: waiting for the user's decision ({basis})")
+
+    revisions = rec.get("revisions", [])
+    for i, r in enumerate(revisions if isinstance(revisions, list) else [], 1):
+        where = f"revision {i}"
+        if text(r, "feature") not in seen | {"claim"}:
+            errors.append(f"{where}: feature {text(r, 'feature')!r} isn't in the record")
+        if not DATE.match(text(r, "date")):
+            errors.append(f"{where}: date must be YYYY-MM-DD")
+        if r.get("outcome_known") not in OUTCOME_KNOWN:
+            errors.append(f"{where}: outcome_known must be one of {', '.join(OUTCOME_KNOWN)}")
+        for key in ("from", "to", "reasoning"):
+            if not text(r, key):
+                errors.append(f"{where}: `{key}` is empty")
+
+    before_production = open_items + blocked + gaps_to_production
+    return errors, open_items, blocked, before_production
+
+
+def is_ready(rec, errors, before_production):
+    """--check: a record fails on any contract error, and a production record also on anything unresolved."""
+    return not errors and not (stage_of(rec) == "production" and before_production)
+
+
+# ---------------------------------------------------------------- output
+
+def report(path, rec, errors, open_items, blocked, before_production):
+    claim = rec.get("claim") if isinstance(rec.get("claim"), dict) else {}
+    stage = stage_of(rec)
+    out = [f"{path}: {unit_name(rec) or '(no unit name)'} ({stage or rec.get('stage', '?')})"]
+    if stage == "exploratory":
+        note = rec.get("exploration") if isinstance(rec.get("exploration"), dict) else {}
+        if text(note, "building"):
+            out.append(f'  Exploring: "{text(note, "building")}"' + (f" (since {text(note, 'started')})"
+                                                                   if text(note, "started") else ""))
+        out.append("    no claim yet; nothing it shows is a finding (SCOPE_PROTOCOL.md §2)")
+    if text(claim, "text"):
+        out.append(f'  Claim: "{text(claim, "text")}"' + (f" (decided {text(claim, 'decided')})"
+                                                         if text(claim, "decided") else ""))
+        if text(claim, "counts_against"):
+            out.append(f"    counts against: {text(claim, 'counts_against')}")
+        stated = items(claim, "experiments")
+        if stated:
+            out.append(f"    details stated in: {', '.join(str(e) for e in stated)}")
+        elif not any(text(claim, k) for k in CLAIM_DETAILS):
+            out.append("    details: stated when its first experiment is preregistered (SCOPE_PROTOCOL.md §3, step 1)")
+    features = rec.get("features") if isinstance(rec.get("features"), list) else []
+    if features:
+        out.append("  Features:")
+        for f in features:
+            cols = [text(f, "id"), text(f, "name"), f.get("kind", "?"), f.get("status", "?")]
+            if f.get("kind") == "science" and f.get("status") != "dropped" and stage != "exploratory":
+                cols += [f.get("basis") or "(no basis)", text(f, "decision") or "(open)"]
+            out.append("    " + "  ".join(c for c in cols if c))
+    for title, lines in (("Errors (break the contract)", errors), ("Open", open_items), ("Blocked", blocked),
+                         ("Before production", before_production)):
+        if lines:
+            out.append(f"  {title}:")
+            out.extend(f"    - {line}" for line in lines)
+    if stage == "exploratory":
+        if not (errors or open_items):
+            out.append("  Nothing open at this stage.")
+    elif not (errors or before_production):
+        out.append("  Nothing open: every scientific feature has a basis and a decision.")
+    return "\n".join(out)
+
+
+# Unit lists in a study manifest (STUDY.toml), and each kind's default folder for an entry.
+MANIFEST_UNITS = {
+    "apps": lambda u: f"apps/{u.get('version', '')}-{u.get('slug', '')}",
+    "sims": lambda u: f"sims/{u.get('slug', '')}",
+    "datasets": lambda u: f"datasets/{u.get('slug', '')}",
+    "calculators": lambda u: f"calculators/{u.get('slug', '')}",
+}
+
+
+def manifest_units(root):
+    """The units a study's STUDY.toml lists that are folders in this repository and still in use: each entry's
+    `path`, or its kind's default folder. Entries pinned to another repo (`repo = ...`) and apps marked superseded
+    or abandoned are left out. A missing or unreadable manifest lists nothing."""
+    try:
+        with open(os.path.join(root, "STUDY.toml"), encoding="utf-8") as fh:
+            manifest = parse(fh.read())
+    except (OSError, UnicodeDecodeError, ParseError):
+        return []
+    found = []
+    for key, default in MANIFEST_UNITS.items():
+        entries = manifest.get(key, [])
+        for u in entries if isinstance(entries, list) else []:
+            if not isinstance(u, dict) or "repo" in u or u.get("status", "active") != "active":
+                continue
+            path = os.path.normpath(os.path.join(root, str(u.get("path") or default(u))))
+            if os.path.isdir(path):
+                found.append(path)
+    return found
+
+
+def find_units(root):
+    """The units under root, as PREREG_PROTOCOL.md §1 defines them: every folder with a preregistrations/ folder
+    or listed in the study manifest, plus root itself if it has preregistrations/ or the earlier root experiments/
+    layout. With none of those, root is the unit."""
+    units = []
+    for dirpath, dirnames, _ in os.walk(root):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS and d not in ("preregistrations", "experiments"))
+        if os.path.isdir(os.path.join(dirpath, "preregistrations")):
+            units.append(os.path.normpath(dirpath))
+    units += [u for u in manifest_units(root) if u not in units]
+    root = os.path.normpath(root)
+    if os.path.isdir(os.path.join(root, "experiments")) and root not in units:
+        units.insert(0, root)
+    return units or [root]
+
+
+def unscoped_units(root):
+    """Units with no SCOPE.toml at their root: their first work is step 0 (SCOPE_PROTOCOL.md §1)."""
+    if not os.path.isdir(root):
+        return []
+    return [os.path.relpath(u, root) for u in find_units(root) if not os.path.exists(os.path.join(u, "SCOPE.toml"))]
+
+
+def find_records(path):
+    if os.path.isfile(path):
+        return [path]
+    found = []
+    for dirpath, dirnames, filenames in os.walk(path):
+        dirnames[:] = sorted(d for d in dirnames if d not in SKIP_DIRS)
+        if "SCOPE.toml" in filenames:
+            found.append(os.path.join(dirpath, "SCOPE.toml"))
+    return found
+
+
+def main():
+    ap = argparse.ArgumentParser(prog="scope-status", description=__doc__,
+                                 formatter_class=argparse.RawDescriptionHelpFormatter)
+    ap.add_argument("path", nargs="?", default=".", help="a SCOPE.toml, or a folder to search (default: .)")
+    ap.add_argument("--check", action="store_true",
+                    help="exit 1 on a contract error, or a production record that isn't ready")
+    a = ap.parse_args()
+    paths = find_records(a.path)
+    unscoped = unscoped_units(a.path)
+    if unscoped:
+        print("Unscoped units (a unit starts with its claim, or an exploratory label; SCOPE_PROTOCOL.md §1):")
+        print("\n".join(f"  - {'the repository' if d == '.' else d}: no SCOPE.toml yet" for d in unscoped))
+    if not paths:
+        return 0  # nothing to check yet: unscoped units are open, not errors
+    ok = True
+    for p in paths:
+        try:
+            with open(p, encoding="utf-8") as fh:
+                rec = parse(fh.read())
+        except (OSError, UnicodeDecodeError, ParseError) as e:
+            print(f"{p}: cannot read the record: {e}")
+            ok = False
+            continue
+        errors, open_items, blocked, before_production = assess(rec)
+        print(report(os.path.relpath(p), rec, errors, open_items, blocked, before_production))
+        ok = ok and is_ready(rec, errors, before_production)
+    return 0 if ok or not a.check else 1
+
+
+if __name__ == "__main__":
+    try:
+        sys.exit(main())
+    except Exception as e:  # a status tool must never break a session
+        print(f"scope-status: {e}", file=sys.stderr)
+        sys.exit(0)

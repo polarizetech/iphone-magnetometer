@@ -30,6 +30,8 @@ MANAGED_CMD = re.compile(r"\.agents/(?:bin|tools)/|tools/convo-log")  # hook com
 # are removed like any other module's, and the reason is printed. Adding one again is refused.
 RETIRED_MODULES = {
     "convo-log": "conversation logging was removed from the kit (0.2.0). Existing logs and PR comments are left as they are.",
+    "tool-scope": "merged into prereg (0.6.0): claim-first scoping now applies to every unit. Its protocol, template "
+                  "and scope-status come with prereg, and existing SCOPE.toml records are kept.",
 }
 MODULE_META = {"module.json", "instructions.md", "hooks"}  # module entries that are not vendored as files
 CHECK_TTL = 6 * 3600       # how long a successful update check is reused by the session-start hook

@@ -22,8 +22,15 @@ esac
 sha256_stdin() { if command -v shasum >/dev/null 2>&1; then shasum -a 256; else sha256sum; fi | cut -c1-64; }
 # Hash each file as committed at the tag, not the working tree, so a receipt posted late still describes what was tagged.
 file_sha_at_tag() {
-  if [ -n "$eid" ] && git cat-file -e "$commit:$1" 2>/dev/null; then git show "$commit:$1" | sha256_stdin; else echo "n/a"; fi
+  if [ -n "$dir" ] && git cat-file -e "$commit:$dir/$1" 2>/dev/null; then git show "$commit:$dir/$1" | sha256_stdin; else echo "n/a"; fi
 }
+# The experiment's folder at the tag: <unit>/preregistrations/<EID>/, or experiments/<EID>/ in the earlier layout.
+dir=""
+if [ -n "$eid" ]; then
+  dir=$(git ls-tree -r --name-only "$commit" | awk -v a="/preregistrations/$eid/PREREG.md" -v b="/experiments/$eid/PREREG.md" '
+    { p = "/" $0
+      if (substr(p, length(p) - length(a) + 1) == a || p == b) { print substr($0, 1, length($0) - length("/PREREG.md")); exit } }')
+fi
 
 body=$(cat <<MSG
 <!-- prereg-receipt v1 tag=$tag commit=$commit -->
@@ -31,8 +38,9 @@ body=$(cat <<MSG
 - commit: \`$commit\`
 - tagged: $tagdate
 - experiment: ${eid:-none (not an experiment milestone tag)}
-- PREREG.md sha256 at the tag: \`$(file_sha_at_tag "experiments/$eid/PREREG.md")\`
-- ENV.lock sha256 at the tag: \`$(file_sha_at_tag "experiments/$eid/ENV.lock")\`
+- folder: ${dir:-n/a}
+- PREREG.md sha256 at the tag: \`$(file_sha_at_tag PREREG.md)\`
+- ENV.lock sha256 at the tag: \`$(file_sha_at_tag ENV.lock)\`
 MSG
 )
 

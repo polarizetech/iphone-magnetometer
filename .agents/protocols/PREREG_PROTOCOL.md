@@ -7,10 +7,13 @@
 
 ---
 
-## 0. The five rules (read these even if you read nothing else)
+## 0. The rules (read these even if you read nothing else)
 
-1. **No run before PREREG.** A run that produces a result a report will cite may not execute until
-   `experiments/<EID>/PREREG.md` is complete (§3) and tagged `<EID>-prereg`. Pilot runs to debug code are
+0. **A claim before any experiment.** Every unit (§1) has a falsifiable claim, settled with the user and
+   recorded in its `SCOPE.toml`, before its first experiment is preregistered. A unit the user marks
+   exploratory may be built without one; nothing it shows is a finding (`SCOPE_PROTOCOL.md`).
+1. **No run before PREREG.** A run that produces a result a report will cite may not execute until the
+   experiment's `PREREG.md` is complete (§3) and tagged `<EID>-prereg`. Pilot runs to debug code are
    allowed only under the conditions in §3.5, and are never cited.
 2. **The environment is part of the preregistration.** `PREREG.md` names the model version it runs against,
    and the experiment folder has a lockfile that pins every dependency. No floating versions. Adding a
@@ -21,40 +24,60 @@
    its own.
 4. **Every departure from the plan goes in `DEVIATIONS.md`,** dated, with whether the outcome was known at the
    time. A deviation that is not logged is a protocol violation, not a judgement call.
-5. **Exploratory work is quarantined.** Anything not in `PREREG.md` lives under `experiments/<EID>/exploratory/`
-   and is labelled exploratory in every report that mentions it.
+5. **Exploratory work is quarantined.** Anything not in `PREREG.md` lives in the experiment's `exploratory/`
+   folder and is labelled exploratory in every report that mentions it.
 
 ---
 
-## 1. Repository layout
+## 1. Units and layout
+
+A **unit** is the thing a preregistration belongs to: an app, a sim, a tool, a calculator, a dataset
+analysis. Each unit has its own claim (`SCOPE_PROTOCOL.md`), its own experiments and its own versions, so a
+change to one unit's plan or model never touches another's.
+
+- **A repository that holds several units** (a study) gives each its own folder, and the kit recognises a
+  unit by its `preregistrations/` folder: every folder that contains one is a unit. How units are named and
+  arranged (`apps/`, `sims/`, `calculators/`, …) is the organisation's layout convention, not this protocol's.
+- **A study's manifest can list its units too.** Where the layout convention keeps a manifest of a study's
+  units (`STUDY.toml`, with its `[[apps]]`, `[[sims]]`, `[[datasets]]` and `[[calculators]]`), each listed
+  folder is a unit from the moment it is listed, before its first preregistration: an entry's `path`, or its
+  kind's default folder. Units pinned to another repository, and apps marked superseded or abandoned, are not.
+- **Any other repository is one unit**, the repository itself: a sim repo, a tool repo, a single app.
+- **Earlier layout.** A repository whose experiments are in `experiments/<EID>/` at its root is one unit with
+  that layout, and keeps it.
 
 ```
-model/                       # the simulator. Versioned with semver tags: model-vX.Y.Z
-EXPERIMENTS.md               # registry: one row per EID, including abandoned and failed ones (below)
-experiments/
-  <EID>/                     # e.g. E04-stentor-map
-    PREREG.md                # written BEFORE any scoring run (§3)
-    ENV.lock                 # pinned environment (§4)
-    config.yaml              # every parameter; model tag; seeds
-    run.py                   # the only entry point that produces citable results
-    DEVIATIONS.md            # deviations and unregistered steps (§5)
-    RESULTS.md               # written AFTER the run, against PREREG.md (§6)
-    exploratory/             # post-hoc work; never cited as a preregistered result
-      pilot/                 # pilot runs allowed before -prereg (§3.5)
-    outputs/                 # raw outputs, checksummed
-CHANGELOG.md                 # model/ changes and which experiments each invalidates
-ASSUMPTIONS.md               # standing modelling assumptions with provenance tags
-DEFERRED.md                  # ideas explicitly not pursued yet
+<unit>/
+  SCOPE.toml                   # the stage, the claim, and features with their evidence (SCOPE_PROTOCOL.md)
+  model/                       # a simulator's model, versioned (§2)
+  preregistrations/
+    <EID>/                     # e.g. E04-stentor-map
+      PREREG.md                # written BEFORE any scoring run (§3)
+      ENV.lock                 # pinned environment (§4)
+      config.yaml              # every parameter; model version; seeds
+      run.py                   # the only entry point that produces citable results
+      DEVIATIONS.md            # deviations and unregistered steps (§5)
+      RESULTS.md               # written AFTER the run, against PREREG.md (§6)
+      exploratory/             # post-hoc work; never cited as a preregistered result
+        pilot/                 # pilot runs allowed before -prereg (§3.5)
+      outputs/                 # raw outputs, checksummed
+  CHANGELOG.md                 # changes to the unit, and which experiments each invalidates
+  ASSUMPTIONS.md               # standing modelling assumptions with provenance tags
+EXPERIMENTS.md                 # at the repository root: every EID of every unit (below)
+DEFERRED.md                    # ideas explicitly not pursued yet
 ```
+
+In a single-unit repository, `<unit>/` is the repository root.
 
 One experiment = one folder = one prediction set. A new prediction set is a new EID, even if the code is
 identical.
 
-**`EXPERIMENTS.md`** lists every EID, created when its folder is:
+**`EXPERIMENTS.md`**, at the repository root, lists every EID of every unit, created when its folder is. EIDs
+are unique across the repository, so tags need no unit prefix:
 
 ```markdown
-| EID | Question (short) | Replaces | Opened | Status | Verdict | Archive (DOI) |
-|-----|------------------|----------|--------|--------|---------|---------------|
+| EID | Unit | Question (short) | Replaces | Opened | Status | Verdict | Archive (DOI) |
+|-----|------|------------------|----------|--------|--------|---------|---------------|
 ```
 
 `Status` is one of {open, prereg, run, closed, abandoned}. An EID abandoned before `-prereg` stays in the table
@@ -67,19 +90,23 @@ visible.
 
 | Tag | When |
 |---|---|
-| `model-vX.Y.Z` | Any change to `model/` that alters numerical output |
+| `model-vX.Y.Z` | Any change to a sim's `model/` that alters numerical output |
+| `vX.Y.Z` | A release of a tool, app or calculator that changes what it computes or shows |
 | `<EID>-prereg` | Commit that adds a complete `PREREG.md` + `ENV.lock` + `config.yaml` |
 | `<EID>-interim-N` | Adaptive stage N plan revision, before its dependent run (§3.4) |
 | `<EID>-run` | Commit that adds `outputs/` + `RESULTS.md` |
 | `<EID>-closed` | Experiment is finished, pass or fail |
 
+- **In a repository with more than one versioned unit, version tags start with the unit's folder name**
+  (`sonifier/v1.2.0`, `sound-propagation/model-v0.3.0`), so two units can both have a `v1.0.0`. EID tags
+  (`<EID>-prereg`, …) need no prefix: EIDs are unique across the repository.
 - Tags are annotated with the ISO date in the message (`.agents/tools/tag` does this, when the
   `experiment-pr-log` module is installed). Tags are never moved or deleted. That is a rule, not something
   git enforces; see "How far the record can be trusted" below.
-- `model/` changes bump the version. An experiment's `config.yaml` records the exact `model-v*` it ran against.
-  If the model is patched later, the old result stands as it is and `CHANGELOG.md` states which experiments the
-  patch invalidates. Re-running under the new model is a new EID.
-- Before a `model-v*` tag is pushed, re-run each previous `<EID>-run` from its own tags and confirm the outputs
+- A change to what a unit computes bumps its version. An experiment's `config.yaml` records the exact version it
+  ran against. If the unit is patched later, the old result stands as it is and the unit's `CHANGELOG.md`
+  states which experiments the patch invalidates. Re-running under the new version is a new EID.
+- Before a version tag is pushed, re-run each of the unit's previous `<EID>-run`s from their own tags and confirm the outputs
   match within the tolerance its `PREREG.md` §7 states. Bit-for-bit is the target where the platform allows
   it; say when it doesn't.
 
@@ -108,11 +135,16 @@ A `PREREG.md` missing any of the eleven sections below is incomplete; don't tag 
 
 ```markdown
 # <EID> — <one-line title>
-Preregistered: <ISO date>   Model tag: model-vX.Y.Z   Author: <name, or "coding assistant + name">
+Preregistered: <ISO date>   Unit: <unit folder>   Version: <the unit's version tag>
+Author: <name, or "coding assistant + name">
+Claim: the unit's claim, from its SCOPE.toml (this experiment tests it, or a prediction derived from it)
 Attempt: <n> of the question in EXPERIMENTS.md (replaces <EID or "none">)
 
 ## 1. Question
 One sentence. A mechanistic claim, not "explore".
+In the unit's first experiment, also state here what the claim needs to be tested: what its terms mean where
+they could be read two ways, and what a test of it assumes and where it doesn't apply. If the unit was
+exploratory, its claim is settled now and recorded in SCOPE.toml before this file is tagged.
 
 ## 2. Prediction(s): risky, numeric, directional
 P1: ...   (what the hypothesis says will happen)
@@ -123,6 +155,7 @@ For each, state what result would COUNT AGAINST the hypothesis.
 | Criterion | Estimand | Performance measure | Uncertainty (MCSE / interval) | Pass | Fail | Derivation |
 - The estimand is the quantity the run estimates; the performance measure is how a run is scored against it.
 - Pass means the interval clears the threshold, not only the point estimate.
+- State the smallest effect that would still matter; it is what makes "no effect" informative.
 - Define what makes the result UNINTERPRETABLE (e.g. controls fail, too many failed runs).
 - Analytic predictions (e.g. the expected slope for a two-stage cascade) are derived HERE, not after.
 
@@ -274,6 +307,8 @@ These apply equally to a person, a script and a coding assistant.
 - **Never** edit `PREREG.md` after `-prereg`. Plan changes go in `DEVIATIONS.md` and, if made before the run,
   get an `-interim-N` tag.
 - **Never** delete, rewrite or "clean up" a closed experiment folder, or remove a row from `EXPERIMENTS.md`.
+- **Never** build in a unit that has neither a settled claim nor an exploratory label, and never preregister
+  an experiment in a unit without a claim (`SCOPE_PROTOCOL.md` §2, step 1).
 - **Never** move a post-hoc analysis out of `exploratory/`.
 - When asked to "make it pass", "fix the threshold", or "try a few values and keep the best": do the runs
   under `exploratory/`, report them as exploratory, and say plainly that they are not preregistered evidence.
@@ -289,10 +324,11 @@ These apply equally to a person, a script and a coding assistant.
 ## 8. Minimal commands
 
 ```bash
-# new experiment: add its row to EXPERIMENTS.md, then
-mkdir -p experiments/E05-name/{exploratory/pilot,outputs}
-# ... write PREREG.md, config.yaml, ENV.lock ...
-git add EXPERIMENTS.md experiments/E05-name && git commit -m "E05: preregistration"
+# new experiment in unit sims/sound-propagation (a single-unit repo: drop the sims/sound-propagation/ prefix)
+U=sims/sound-propagation
+mkdir -p $U/preregistrations/E05-name/{exploratory/pilot,outputs}
+# ... add its row to EXPERIMENTS.md; write PREREG.md, config.yaml, ENV.lock ...
+git add EXPERIMENTS.md $U/preregistrations/E05-name && git commit -m "E05: preregistration"
 .agents/tools/tag E05-name-prereg "preregistered"      # or: git tag -a E05-name-prereg -m "$(date +%F) preregistered"
 
 # adaptive revision before a dependent run
@@ -300,13 +336,13 @@ git commit -am "E05: interim plan 1 (see DEVIATIONS.md #1)"
 .agents/tools/tag E05-name-interim-1 "interim plan 1"
 
 # after the run
-git add experiments/E05-name/outputs experiments/E05-name/RESULTS.md EXPERIMENTS.md
+git add $U/preregistrations/E05-name/outputs $U/preregistrations/E05-name/RESULTS.md EXPERIMENTS.md
 git commit -m "E05: run + results"
 .agents/tools/tag E05-name-run "run"
 .agents/tools/tag E05-name-closed "verdict: FAIL"
 
-# model change
-git tag -a model-v0.4.0 -m "$(date +%F) invalidates: E03 (see CHANGELOG.md)"
+# a model change, in a repo with several versioned units
+git tag -a sound-propagation/model-v0.4.0 -m "$(date +%F) invalidates: E03 (see $U/CHANGELOG.md)"
 ```
 
 ---

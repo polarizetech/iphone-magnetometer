@@ -16,7 +16,7 @@ and in git beside the results.
 | Rule | Detail |
 |---|---|
 | Branch per experiment | `experiment/<EID>` off `main`. Model changes go on `model/<topic>` branches, not experiment branches. |
-| Draft PR at start | First action on the branch: `git commit --allow-empty -m "start <EID>"; git push -u origin HEAD; gh pr create --draft --title "<EID>: <title>" --body "Preregistered experiment. See experiments/<EID>/PREREG.md"`. Receipts need the PR to exist. |
+| Draft PR at start | First action on the branch: `git commit --allow-empty -m "start <EID>"; git push -u origin HEAD; gh pr create --draft --title "<EID>: <title>" --body "Preregistered experiment. See <unit>/preregistrations/<EID>/PREREG.md"`. Receipts need the PR to exist. |
 | Prereg receipt on the PR | Tag `<EID>-prereg` with `.agents/tools/tag` (§2), which posts the receipt as a PR comment straight away. The comment's timestamp comes from GitHub, not the local machine, so it is evidence the tagged plan existed by then. It is not an archive (comments can be edited or deleted) and can't show that nothing ran before the plan. For an immutable timestamp, also archive the tag (`PREREG_PROTOCOL.md` §2). |
 | Interim and run receipts | Same after each `-interim-N`, `-run`, `-closed` tag. The PR then shows the ordering prereg → interim → run → closed with server-side times. |
 | Protect the tags | Turn on tag protection (a GitHub ruleset for `*-prereg`, `*-interim-*`, `*-run`, `*-closed`, `model-v*`) so pushed milestone tags can't be moved or deleted, and sign them (`git config tag.gpgSign true`). |
@@ -27,16 +27,16 @@ and in git beside the results.
 | File | What it does |
 |---|---|
 | `.agents/tools/tag <tag> "<message>"` | `git tag -a` with a dated message (signed if `tag.gpgSign` is set), then posts the receipt. Use this, **never bare `git tag`**, for experiment tags. |
-| `.agents/tools/prereg-receipt <tag>` | Posts a tag receipt to the branch's PR: commit, tag date, EID, and sha256 of `experiments/<EID>/PREREG.md` and `ENV.lock` as committed at the tag (so a receipt posted late still describes what was tagged). The EID is the tag minus its `-prereg`/`-interim-N`/`-run`/`-closed` suffix; other tags (e.g. `model-v*`) get `n/a`. The comment's time comes from GitHub, not this machine. |
+| `.agents/tools/prereg-receipt <tag>` | Posts a tag receipt to the branch's PR: commit, tag date, EID, and sha256 of the experiment's `PREREG.md` and `ENV.lock` as committed at the tag, found by EID in `<unit>/preregistrations/<EID>/` (or `experiments/<EID>/` in the earlier layout) (so a receipt posted late still describes what was tagged). The EID is the tag minus its `-prereg`/`-interim-N`/`-run`/`-closed` suffix; other tags (e.g. `model-v*`) get `n/a`. The comment's time comes from GitHub, not this machine. |
 | `.agents/tools/prereg-status` | Prints one line of context (branch, EID, milestone and interim tags present, whether `PREREG.md` is FROZEN). Claude Code runs it on every prompt via the `UserPromptSubmit` hook. |
 
 ## 3. Commit guard (`.agents/githooks/pre-commit`)
 
 Enable once per clone with `git config core.hooksPath .agents/githooks`. This replaces `.git/hooks` for the repo, so move any existing hooks into the kit first.
 
-It refuses to commit:
-- run outputs (`experiments/<EID>/outputs/*`, `RESULTS.md`) for an experiment that has no `<EID>-prereg` tag;
-- any change to `experiments/<EID>/PREREG.md` after `<EID>-prereg` exists. Log the change in `DEVIATIONS.md` instead.
+It refuses to commit, for experiments in any unit (and in the earlier root `experiments/<EID>/` layout):
+- run outputs (`<unit>/preregistrations/<EID>/outputs/*`, `RESULTS.md`) for an experiment that has no `<EID>-prereg` tag;
+- any change to the experiment's `PREREG.md` after `<EID>-prereg` exists. Log the change in `DEVIATIONS.md` instead.
 
 Like any git hook it only runs where it's enabled, and `git commit --no-verify` skips it. It catches mistakes; the tags and receipts are what make a violation visible afterwards.
 

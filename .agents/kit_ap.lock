@@ -1,7 +1,7 @@
 {
   "source": "https://github.com/polarizetech/adaptive-preregistration.git",
   "ref": "main",
-  "commit": "13a8cbb66c6acb8ec332b8739917e0d496470b23",
+  "commit": "179dc7b79cf03a494c0e252604707a4e32c1be27",
   "dirty": false,
   "modules": [
     "core",
@@ -10,13 +10,16 @@
   ],
   "files": {
     ".agents/README.md": "a66c6fb2b6d3d5f1165dd547933bd062b00a7e6d573bc5c2dacb144c19bcac12",
-    ".agents/bin/kit_ap": "b54741702bef9060f1cbdb60124752217dc7168a52cebbb827faa008329a926b",
-    ".agents/githooks/pre-commit": "cb0f31c9efc14173466f30585b307d1a5ee1d8de963d1119f66593891cf9f820",
+    ".agents/bin/kit_ap": "4c43ac3a3f9bd9e549b5232177d4b1aa579cc3311bfd446d55537bf77858e24f",
+    ".agents/githooks/pre-commit": "648bb666b5eb475dcd9a2a4a0227422c2515ae23dd9a9e36a922cf079f3ce2e1",
     ".agents/protocols/ARCHIVING.md": "e379fb8c7741743b662806fc3d87eadfc76ef191aa127e8a8dcde9b6d0846d76",
-    ".agents/protocols/EXPERIMENT_PR_LOG.md": "28c7e3adadf5f0ddb2a261e32bdd7b3bd48fb1d36fd83e6068cbb696f1670eb9",
-    ".agents/protocols/PREREG_PROTOCOL.md": "ed998e7736fd54ca8e9252159682e769aae5afb3ca7bb9141c451ea7ecd52db8",
-    ".agents/tools/prereg-receipt": "1ba9a8771c7b99ae10518d85b597e75f480488ea55a372e466441fdb5205fbfa",
-    ".agents/tools/prereg-status": "323c0daa87b54fe5d7f4f9d7b927f6d8d24337c0815319604d09901ab398fed8",
+    ".agents/protocols/EXPERIMENT_PR_LOG.md": "a7acc7424d2c7d0c99f8c32045452fcda2802dabc081064949cffdc07f77cacd",
+    ".agents/protocols/PREREG_PROTOCOL.md": "8fcc4919adb15e643a79c88e161026a30d955217cc4b241295abcecb5099d63e",
+    ".agents/protocols/SCOPE_PROTOCOL.md": "e11c240e8ee848d372fae338900e3eb09a65c8077855796ac1fa562fe0a77fdc",
+    ".agents/templates/SCOPE.toml": "d20775db860e59cd4507deb34f959e47cb52cb122c16e4d7e51432793be86847",
+    ".agents/tools/prereg-receipt": "8803de395663ae94deeee7f4f78a6e34755455208580e485d9c144a213643990",
+    ".agents/tools/prereg-status": "28439a960eff77db37e3624360a03708dc1cd0013540b6911b85d33408a9236b",
+    ".agents/tools/scope-status": "1dd8c8624cc51a59d1fc8c4ba734b9d79faa6262c787adb56d1478ca5defb4c8",
     ".agents/tools/tag": "775705cadd1ef81e25d3076968291485302d204620b9ecc72289d5da85b42cff",
     ".github/hooks/kit_ap-core.json": "0e5a1a6763aa34c4ac2e48870b4a384fe594ccf1630bd6dc90fb2b6c642dbb8e"
   }

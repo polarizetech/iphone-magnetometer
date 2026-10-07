@@ -1,0 +1,54 @@
+# Scope record for one unit (an app, sim, tool, calculator, …), at the unit's root.
+# Contract: .agents/protocols/SCOPE_PROTOCOL.md §9.
+# The TOML subset only: single-line strings (use \n for a line break), no multi-line strings,
+# no inline tables, dates as "YYYY-MM-DD" strings. Check it with .agents/tools/scope-status.
+
+format = 3
+unit = ""                       # the unit's name, e.g. its folder name
+stage = "testing"               # exploratory | testing | production
+corpus_project = ""             # the research corpus project it belongs to, if any
+
+# Exploratory stage only: the build note, written from the user's request before building. No claim yet,
+# and features need no basis or decision. Nothing the unit shows is a finding.
+[exploration]
+building = ""                   # what is being built
+known = ""                      # what is already known about it
+started = ""                    # YYYY-MM-DD
+
+# From the testing stage on. Left empty while the unit is exploratory.
+[claim]
+text = ""                       # the user's wording, verbatim
+counts_against = ""             # what would count against it, verbatim
+decided = ""                    # YYYY-MM-DD
+experiments = []                # the EIDs whose PREREG.md states the claim's details
+candidates = []                 # the candidate claims that were offered, if any
+
+# One [[features]] table per feature. Copy this block for each one.
+#
+# [[features]]
+# id = "F1"
+# name = ""
+# kind = "science"              # science | infrastructure
+# does = ""                     # what it computes or shows
+# counts_against = ""           # what outcome would count against the claim (science)
+# status = "accepted"           # accepted | changed | dropped
+# basis = ""                    # science: established | supported | derived | override | gap
+# sources = []                  # "claim:<ID>", "doi:10.x/y [FT]", "https://… [AB]"
+# derivation = ""               # derived: the derivation from the sources
+# departs_from = ""             # override: what established or supported practice it departs from
+# not_found = ""                # what couldn't be found or verified
+# decision = ""                 # use-research | override | research-further (empty while open)
+# reasoning = ""                # the user's reasoning, verbatim (required for override)
+# decided = ""                  # YYYY-MM-DD
+# experiments = []              # override: the EIDs of the preregistered experiments that test it
+# result = ""                   # production: where the result is, and the decision taken on it
+
+# Decisions are never edited in place. A change is appended here, and the feature updated.
+#
+# [[revisions]]
+# feature = "F1"               # a feature id, or "claim"
+# date = ""
+# from = ""
+# to = ""
+# outcome_known = "no"          # no | partial | yes
+# reasoning = ""

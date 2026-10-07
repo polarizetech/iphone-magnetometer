@@ -9,4 +9,6 @@ for t in prereg run closed; do
 done
 n=$(git tag -l "${eid}-interim-*" | wc -l | tr -d ' ')
 [ "$n" != 0 ] && s="$s interim×$n"
-echo "[prereg] branch=$b eid=$eid tags:${s:- none}. PREREG.md is $( [[ $s == *prereg* ]] && echo FROZEN || echo editable )."
+dir=$(git ls-files | awk -v a="/preregistrations/$eid/PREREG.md" -v b="/experiments/$eid/PREREG.md" '
+  { p = "/" $0; if (substr(p, length(p) - length(a) + 1) == a || p == b) { print substr($0, 1, length($0) - 10); exit } }')
+echo "[prereg] branch=$b eid=$eid folder=${dir:-not found} tags:${s:- none}. PREREG.md is $( [[ $s == *prereg* ]] && echo FROZEN || echo editable )."
