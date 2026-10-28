@@ -1,0 +1,175 @@
+# Build-vs-reuse register: our own scientific code, and the open-source, peer-reviewed tool that
+# does (or could do) the same job. States: tandem | candidate | none-found | replaced.
+# Format: https://github.com/polarizetech/retrieval-augmented-generation/blob/main/docs/reuse-register.md
+# Seeded from the 2026-10-28 review of this repo; check entries as you touch the code.
+
+[[custom]]
+name = "Lock-in detector with F-test p-value"
+path = "BiomimeticRadar/Processing/SignalProcessor.swift"
+does = "lock-in amplitude/phase at a carrier and an F-test p-value (lockIn, fTestPValue)"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. Synthetic tests only (SignalProcessorTests.swift, AuditFixTests.swift). The F p-value alone can be checked against scipy.stats.f.sf on the same F, d1, d2."
+
+[[custom]]
+name = "Coded-carrier matched filter"
+path = "BiomimeticRadar/Processing/SignalProcessor.swift"
+does = "coded reference waveform and matched-filter lag search (matchedFilter, codedReference)"
+state = "candidate"
+alternative = "scipy"
+check = ""
+note = "G1. Compare the lag and peak with scipy.signal.correlate(signal, reference, mode='full') on the same coded reference; synthetic testMatchedFilterRecoversKnownLag only so far."
+
+[[custom]]
+name = "Coherent-averaging gain report"
+path = "BiomimeticRadar/Processing/SignalProcessor.swift"
+does = "coherent-averaging gain against the sqrt(N) bound (coherentAveragingReport)"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. Synthetic tests only."
+
+[[custom]]
+name = "Biquad band-pass and notch filters"
+path = "BiomimeticRadar/Processing/SignalProcessor.swift"
+does = "biquad band-pass and notch (bandpass, notch); JS twin in web/dsp.js"
+state = "candidate"
+alternative = "scipy"
+check = ""
+note = "G1. Compare coefficients and frequency response with scipy.signal.iirnotch / iirpeak (or butter, output='sos') and scipy.signal.freqz / sosfilt on the same signal."
+
+[[custom]]
+name = "Radix-2 FFT and Hilbert analytic signal"
+path = "BiomimeticRadar/Processing/FFT.swift"
+does = "hand-written Cooley-Tukey FFT, power spectrum and band-limited analytic signal"
+state = "candidate"
+alternative = "numpy"
+check = ""
+note = "Hand re-implementation (review G2, treated as custom). Compare transform/spectrum with numpy.fft.fft / rfft and analyticBand with scipy.signal.hilbert after the same band-pass."
+
+[[custom]]
+name = "Phase-amplitude coupling (Tort modulation index)"
+path = "BiomimeticRadar/Processing/CrossBandCoupling.swift"
+does = "Tort et al. 2010 modulation index with a circular-shift null"
+state = "candidate"
+alternative = "tensorpac"
+check = ""
+note = "Hand re-implementation (review G2, cites Tort 2010). Compare modulationIndex with tensorpac Pac(idpac=(2, 2, 0)) (Tort MI, circular-shift surrogates) on the same phase/amplitude series; planted-signal tests only so far."
+
+[[custom]]
+name = "Benjamini-Hochberg correction"
+path = "BiomimeticRadar/Processing/SignalProcessor.swift"
+does = "Benjamini-Hochberg FDR adjusted p-values (benjaminiHochberg)"
+state = "candidate"
+alternative = "statsmodels"
+check = ""
+note = "Hand re-implementation (review G2, uncited). Compare with statsmodels.stats.multitest.multipletests(p, method='fdr_bh')[1]; current test uses hand-computed values (SignalProcessorTests.swift:60)."
+
+[[custom]]
+name = "Allan deviation"
+path = "BiomimeticRadar/Processing/SignalProcessor.swift"
+does = "Allan deviation (allanDeviation)"
+state = "candidate"
+alternative = "allantools"
+check = ""
+note = "Hand re-implementation (review G2, uncited). Compare with allantools.adev at the same tau; check whether allantools has a peer-reviewed methods paper before adding it to the catalogue."
+
+[[custom]]
+name = "Welch PSD and noise floor (Swift)"
+path = "BiomimeticRadar/Processing/SignalProcessor.swift"
+does = "Welch PSD and median noise floor at a target frequency"
+state = "candidate"
+alternative = "scipy"
+check = ""
+note = "Hand re-implementation (review G2). Compare the PSD with scipy.signal.welch using the same window, segment length and overlap; not yet checked."
+
+[[custom]]
+name = "Web DSP (FFT, Welch PSD, high-pass, notch)"
+path = "web/dsp.js"
+does = "browser FFT, Welch PSD, noise floor, high-pass and notch"
+state = "candidate"
+alternative = "scipy"
+check = ""
+note = "Hand re-implementation (review G2/G1). Compare welch() with scipy.signal.welch and notch()/highPass() with scipy.signal.iirnotch / butter on the same input."
+
+[[custom]]
+name = "Signal census (variance partition by source)"
+path = "BiomimeticRadar/Processing/SignalCensus.swift"
+does = "partitions spectral variance by claimed source; Python port in census.py"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. SignalCensusTests.swift is synthetic. Keep census.py and the Swift version in agreement."
+
+[[custom]]
+name = "Band registry and aliasing visibility"
+path = "BiomimeticRadar/Processing/BandRegistry.swift"
+does = "band registry and alias visibility at a sample rate; Python port in bands.py"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. No reference found."
+
+[[custom]]
+name = "Motion-coupling regression"
+path = "census.py"
+does = "regresses the field on motion predictors and reports variance explained (motion_coupling, variance_explained)"
+state = "candidate"
+alternative = "statsmodels"
+check = ""
+note = "G1. Compare variance_explained with statsmodels OLS(y, add_constant(X)).fit().rsquared (ridge is 1e-6, so they should agree closely)."
+
+[[custom]]
+name = "Quality gates (DC field, motion, clock)"
+path = "BiomimeticRadar/Processing/QualityGates.swift"
+does = "session quality gates; session-level twin in QualityGatesSession.swift"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. GoldenSessionTests.swift is a regression test on the team's own session, not a published comparison."
+
+[[custom]]
+name = "Lightning coupling"
+path = "BiomimeticRadar/Processing/LightningCoupling.swift"
+does = "Ampere field of a stroke, sampler survival, Schumann transient amplitude"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. LightningCouplingTests.swift checks a hand-calculated Ampere value; the ~1 pT Schumann figure is uncited."
+
+[[custom]]
+name = "Reference-signals catalogue"
+path = "BiomimeticRadar/Processing/ReferenceSignals.swift"
+does = "expected amplitudes of reference signals by tier"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. Tiers given but no citations; each amplitude needs a source."
+
+[[custom]]
+name = "Synthetic data simulator"
+path = "BiomimeticRadar/Processing/SyntheticDataSimulator.swift"
+does = "synthetic magnetometer sessions with a coded carrier; Python port session.py synthetic()"
+state = "none-found"
+alternative = ""
+check = ""
+note = "G1. No reference found."
+
+[[custom]]
+name = "Hard-iron calibration and Earth-frame field"
+path = "cardiomagprobe/analysis/calibrate.py"
+does = "least-squares hard-iron offset and rotation to the Earth frame (hard_iron, earth_frame)"
+state = "candidate"
+alternative = "igrf"
+check = ""
+note = "G1. Line 134 says compare against IGRF/WMM but no comparison is implemented. Compare earth_frame |B| (and inclination) with IGRF-14 or WMM2025 at the recording's latitude, longitude and date (e.g. ppigrf or pyIGRF)."
+
+[[custom]]
+name = "CardioMag heartbeat-locked epochs"
+path = "cardiomagprobe/analysis/cardiomag_analysis.py"
+does = "heartbeat-locked epochs, shifted-beat surrogates, bootstrap CI, held-out template, jitter; Swift twin cardiomagprobe/CardioMagProbe/SignalAnalysis.swift"
+state = "candidate"
+alternative = "mne"
+check = ""
+note = "G1. Compare the epoch averages and baseline correction with mne.Epochs(...).average() on the same R-peak events; surrogates and bootstrap stay custom. Tests (test_analysis.py, SignalAnalysisTests.swift) are injection-recovery only."
