@@ -359,18 +359,21 @@ def report(path, rec, errors, open_items, blocked, before_production):
     return "\n".join(out)
 
 
-# Unit lists in a study manifest (STUDY.toml), and each kind's default folder for an entry.
+# Unit lists in a study manifest (STUDY.toml), and each kind's default folders for an entry, first that exists.
+# An app version is apps/<slug>/<version>; the earlier apps/<version>-<slug> is still read.
 MANIFEST_UNITS = {
-    "apps": lambda u: f"apps/{u.get('version', '')}-{u.get('slug', '')}",
-    "sims": lambda u: f"sims/{u.get('slug', '')}",
-    "datasets": lambda u: f"datasets/{u.get('slug', '')}",
-    "calculators": lambda u: f"calculators/{u.get('slug', '')}",
+    "apps": lambda u: [f"apps/{u.get('slug', '')}/{u.get('version', '')}",
+                       f"apps/{u.get('version', '')}-{u.get('slug', '')}"],
+    "sims": lambda u: [f"sims/{u.get('slug', '')}"],
+    "datasets": lambda u: [f"datasets/{u.get('slug', '')}"],
+    "calculators": lambda u: [f"calculators/{u.get('slug', '')}"],
 }
 
 
 def manifest_units(root):
     """The units a study's STUDY.toml lists that are folders in this repository and still in use: each entry's
-    `path`, or its kind's default folder. Entries pinned to another repo (`repo = ...`) and apps marked superseded
+    `path`, or its kind's default folder (for an app, `apps/<slug>/<version>`, or the earlier
+    `apps/<version>-<slug>`). Entries pinned to another repo (`repo = ...`) and apps marked superseded
     or abandoned are left out. A missing or unreadable manifest lists nothing."""
     try:
         with open(os.path.join(root, "STUDY.toml"), encoding="utf-8") as fh:
@@ -383,9 +386,11 @@ def manifest_units(root):
         for u in entries if isinstance(entries, list) else []:
             if not isinstance(u, dict) or "repo" in u or u.get("status", "active") != "active":
                 continue
-            path = os.path.normpath(os.path.join(root, str(u.get("path") or default(u))))
-            if os.path.isdir(path):
-                found.append(path)
+            for rel in [str(u["path"])] if u.get("path") else default(u):
+                path = os.path.normpath(os.path.join(root, rel))
+                if os.path.isdir(path):
+                    found.append(path)
+                    break
     return found
 
 
@@ -402,6 +407,8 @@ def find_units(root):
     root = os.path.normpath(root)
     if os.path.isdir(os.path.join(root, "experiments")) and root not in units:
         units.insert(0, root)
+    if units and os.path.exists(os.path.join(root, "TOOL.toml")) and root not in units:
+        units.insert(0, root)  # a tool is a unit beside its comparison units (TOOL_VERSIONING.md §1a)
     return units or [root]
 
 
