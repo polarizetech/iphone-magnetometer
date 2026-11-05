@@ -1,0 +1,21 @@
+kind = "tool"
+name = "iphone-magnetometer"
+job = "Records an iPhone's raw magnetometer, motion and timing as an always-on stream (FieldLab), keeps it in a server-side store, and reads it back"
+stage = "SKETCH"                  # SKETCH | PROBE | BENCH | SHIPPED
+visibility = "public"             # the repo is public (README, CLAUDE.md)
+visibility_decided = "2026-09-27" # the first public release
+profile = "polarizetech"
+# The one version. pyproject.toml, CITATION.cff and CHANGELOG.md say the same, and `scaffold check`
+# fails when they differ. An undated CHANGELOG heading means that version is in preparation.
+version = "0.1.0"
+# A tool holds no research: no question, no [corpus], no root preregistrations. Measurements made
+# with FieldLab belong to the study that made them, recorded there against the release it used.
+
+# One entry per repo that depends on this tool, with what it relies on. A change to anything in
+# `uses` breaks a consumer this repo cannot test: name it under `### Outputs changed` in
+# CHANGELOG.md. Consumers pin a vX.Y.Z tag, never a branch.
+#
+# [[consumers]]
+# name = ""
+# repo = "polarizetech/"
+# uses = ["the chunk wire format (fieldlab-stream/1)", "GET /api/status"]

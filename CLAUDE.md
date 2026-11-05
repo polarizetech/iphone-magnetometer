@@ -10,7 +10,8 @@ This repo is **public**. Read `README.md` first.
 
 - **No findings here.** What a recording shows, claims, results and study-specific analysis belong to
   the study using the tool (its repo and the research corpus), never to this repo, its changelog or
-  its comments. Measurements *of the tool itself* are allowed, preregistered in `EXPERIMENTS.md`.
+  its comments. Measurements *of the tool itself* too: the study that makes them registers them.
+  (Decided 2026-11-05; the scaffold's tool protocol, PROTOCOL.md § 8.)
 - **No knowledge of any particular study or deployment.** A consumer is configured
   (`FIELDLAB_ANALYSIS`, `FIELDLAB_PREFIXES`, `FIELDLAB_DESIGN`), never searched for by name.
 - **No private data**: no hostnames, team IDs, personal paths, or location in fixtures.
