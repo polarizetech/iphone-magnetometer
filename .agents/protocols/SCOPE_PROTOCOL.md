@@ -32,10 +32,14 @@ folder in a repository that holds several units, or the repository itself when i
 one **scope record**, `SCOPE.toml`, at the unit's root. A unit without one is **unscoped**, and the first work
 on it is step 0.
 
-**A tool repository holds no research.** A repository that is a tool (its `TOOL.toml` says `kind = "tool"`, or
-its README carries `**Kind:** tool`) is one unit and is scoped like any other, but nothing in it is
-preregistered: its overrides are preregistered in the research corpus, in the project its record names
-(`corpus_project`), and its findings stay there (§7).
+**A tool repository holds no research, except comparisons with other tools.** A repository that is a tool (its
+`TOOL.toml` says `kind = "tool"`, or its README carries `**Kind:** tool`) is a unit and is scoped like any other,
+but nothing in the tool itself is preregistered: its overrides are preregistered in the research corpus, in the
+project its record names (`corpus_project`), and its findings stay there (§7). The exception is its
+**comparison units** (`TOOL_VERSIONING.md` §1a): `sims/<slug>/` and `datasets/<slug>/` that compare the tool's
+functionality against other tools. Each is a unit of its own with its own `SCOPE.toml` (naming what it
+`compares`) and its own `preregistrations/`; its predictions are about the tools' outputs on declared inputs,
+never about the world.
 
 What a unit shows before a preregistered test is exploration, not a finding. Exploratory work (apps, tools,
 first runs) is the groundwork that makes a later test informative: it settles what the claim's terms mean,

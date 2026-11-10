@@ -2,6 +2,8 @@
 
 **Kind:** tool · **Version:** 0.1.0
 
+**Scope:** exploratory. No claim yet, and nothing here is a finding. It gets its claim before its first preregistered experiment.
+
 An iPhone magnetometer recorder, and the small server that keeps what it records. FieldLab streams
 the phone's **raw** magnetometer, motion and timing to a Mac in self-describing chunks, keeps them in
 a store on disk, and draws what arrived. It records; it does not interpret. What a recording means is
@@ -64,10 +66,10 @@ make cardiomag-test # CardioMag Probe's Python analysis tests
 
 ## Validating the tool
 
-Measurements of the instrument itself (what rate the phone really delivers, what the pipeline can
-recover) follow [adaptive preregistration](https://github.com/polarizetech/adaptive-preregistration),
-installed in `.agents/`: predictions are written and tagged before the run. They are registered in
-[`EXPERIMENTS.md`](EXPERIMENTS.md). Research findings made *with* FieldLab do not live here.
+A tool holds no research, not even measurements of itself (what rate the phone really delivers, what
+the pipeline can recover). Those are preregistered by the study that makes them, following
+[adaptive preregistration](https://github.com/polarizetech/adaptive-preregistration), and recorded
+there against the tool release they used. Nothing made *with* FieldLab lives here either.
 
 ## Licence and citation
 

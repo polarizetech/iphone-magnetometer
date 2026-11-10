@@ -42,7 +42,9 @@ change to one unit's plan or model never touches another's.
   units (`STUDY.toml`, with its `[[apps]]`, `[[sims]]`, `[[datasets]]` and `[[calculators]]`), each listed
   folder is a unit from the moment it is listed, before its first preregistration: an entry's `path`, or its
   kind's default folder. Units pinned to another repository, and apps marked superseded or abandoned, are not.
-- **Any other repository is one unit**, the repository itself: a sim repo, a tool repo, a single app.
+- **Any other repository is one unit**, the repository itself: a sim repo, a tool repo, a single app. A tool
+  repo's comparison units (`sims/<slug>/`, `datasets/<slug>/` comparing the tool against other tools;
+  `TOOL_VERSIONING.md` §1a) are units of their own, alongside the tool.
 - **Earlier layout.** A repository whose experiments are in `experiments/<EID>/` at its root is one unit with
   that layout, and keeps it.
 

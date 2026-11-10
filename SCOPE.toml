@@ -1,0 +1,23 @@
+# Scope record (.agents/protocols/SCOPE_PROTOCOL.md). Exploratory: no claim yet, and features need no
+# evidence basis or decision. Settle the claim, and set stage = "testing", before the first experiment.
+# A tool holds no research; a claim here would be an engineering claim about what the tool delivers.
+
+format = 3
+unit = "iphone-magnetometer"
+stage = "exploratory"
+
+[exploration]
+building = "FieldLab: an iPhone app that streams the phone's raw magnetometer, device motion and timing to a Mac as self-describing chunks (one raw-DEFLATE file per chunk: a JSON header line, then raw.csv), deleting a chunk from the phone only once the server acknowledges it; a standard-library server and store (serve.py, store.py) that keeps the chunks, serves a live dashboard, and runs a consuming study's analysis as jobs; readers (session.py, census.py, bands.py) over the stored stream; and CardioMag Probe, a second app for heartbeat-locked recordings at chest distances with camera PPG timing, with a Python analysis of its exports. It records; it does not interpret."
+approach = "Keep the three seams fixed and pinned: the chunk wire format (a Swift-written fixture the Python gate decodes), BandRegistry.swift as the single band catalogue that bands.py parses, and a store that never overwrites a chunk. The server and store stay standard-library Python 3.9; consumers are configured (FIELDLAB_ANALYSIS, FIELDLAB_PREFIXES, FIELDLAB_DESIGN), never named. Next on the app: log the calibrated CMDeviceMotion field and its accuracy beside the raw channel, so the MagSafe offset is visible (the open defect in CLAUDE.md). Measurements of the tool (delivered sample rate, the calibrated channel) are preregistered by the study that makes them."
+# scope: the first conversation's decision, "one" (it fits one tool) or "split: a, b" (break it
+# up), with scope_decided = YYYY-MM-DD. Decide it with the person before building.
+scope = "one"                     # Joshua, 2026-11-05: FieldLab and CardioMag Probe stay one tool
+scope_decided = "2026-11-05"
+known = "The raw channel includes the phone's own MagSafe magnets (hundreds of µT), and the calibrated field is not yet logged beside it. First public release 0.1.0 on 2026-09-27, extracted from the private study that built it; what it records is interpreted only by the study using it. It is an experimental instrument, not a medical or biomagnetic detector."
+started = "2026-11-05"
+
+[claim]
+text = ""
+counts_against = ""
+decided = ""
+experiments = []

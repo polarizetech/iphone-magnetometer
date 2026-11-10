@@ -2,6 +2,12 @@
 <meta charset="utf-8">
 <title>FieldLab — always-on stream</title>
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<script>
+  // Behind a proxy that strips its mount path (tailscale serve --set-path), the server cannot see
+  // whether the page was asked for as /fieldlab or /fieldlab/, and only the second resolves the
+  // relative links below. Direct, the page is already at /, so this never fires.
+  if (!location.pathname.endsWith('/')) location.replace(location.pathname + '/' + location.search + location.hash);
+</script>
 <link rel="stylesheet" href="design/design.css">
 <script type="module" src="design/design.js"></script>
 <link rel="stylesheet" href="app.css">
